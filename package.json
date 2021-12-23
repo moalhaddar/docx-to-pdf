@@ -1,0 +1,24 @@
+{
+  "name": "pdf_generator",
+  "version": "1.0.0",
+  "description": "doxc to pdf converter that uses liberoffice under the hood, exposing an HTTP endpoint as API",
+  "main": "index.js",
+  "author": "Mohammed Alhaddar",
+  "license": "MIT",
+  "dependencies": {
+    "@types/express": "^4.17.13",
+    "@types/express-fileupload": "^1.2.0",
+    "@types/node": "^17.0.4",
+    "@types/tmp": "^0.2.3",
+    "body-parser": "^1.19.1",
+    "express": "^4.17.2",
+    "express-fileupload": "^1.2.1",
+    "nodemon": "^2.0.15",
+    "tmp": "^0.2.1",
+    "ts-node": "^10.4.0",
+    "typescript": "^4.5.4"
+  },
+  "scripts": {
+    "start": "nodemon -L -w ./src/** --exec ts-node ./src/index.ts"
+  }
+}
