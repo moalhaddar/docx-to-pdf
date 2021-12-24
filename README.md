@@ -1,4 +1,4 @@
-# Doxc to PDF converter
+# Docx to PDF converter
 The problem: too many tools to convert from docx to PDF, but usually they end up messing something up in the formating, handling RTL text, handling different fonts and so on. This library is built right on top of LibreOffice, and provides an HTTP API that allows uploading a *.docx file and respondes with the *.pdf file back.
 
 
