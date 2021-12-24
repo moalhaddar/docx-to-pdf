@@ -1,70 +1,50 @@
-import express, {Request, Response, Express} from "express";
+import express, {Request, Express} from "express";
 import fileUpload, { UploadedFile } from "express-fileupload";
 import bodyParser from "body-parser";
-import tmp from "tmp";
-import { exec } from "child_process";
-import { readFile } from "fs";
-
-const PORT = 9999;
-const TEMPORARY_PDF_PATH = "/tmp/generated_pdfs";
-const TEMPORARY_UPLOAD_PATH = '/tmp/uploaded_docx';
+import { PORT, TEMPORARY_UPLOAD_PATH } from "./constants";
+import { doc_to_pdf } from "./functions/doc_to_pdf";
+import { get_file } from "./functions/get_file";
+import { is_present } from "./functions/is_present";
 
 // This project inspired by this response: https://stackoverflow.com/a/30465397
 
-const isPresent = <R>(x: R): x is NonNullable<R> => x !== null && x !== undefined;
-
-const docxToPdfHandler: (req: Request, res: Response) => void = (req, res) => {
-	if (!isPresent(req.files)){
-		res.status(400).send("No files were provided")
-		return;
-	}
-	const docx = req.files.document as UploadedFile | undefined | null;
-	if (!isPresent(docx)){
-		res.status(400).send("No file with key [document] was provided")
-		return;
-	}
-
-	const docxPath = docx.tempFilePath;
-	console.log(docxPath);
-	
-	const docxName = docxPath.split('/')[3];
-	tmp.file((err, path) => {
-		if (err) {
-			console.error(err);
-			res.status(500).send('Cannot create temporary file to store the pdf at.')
+const docx_to_pdf_handler: (
+		sk: (data: Buffer) => void, 
+		fk: (args: {status: 400 | 500, message: string}) => void, 
+		files: Request['files']
+	) => void 
+	= (sk, fk, files) => {
+		if (!is_present(files)){
+			fk({status: 400, message: "No files were provided"})
 			return;
-		} 
-		// lol, this can be RCE, i guess?
-		exec(`
-			libreoffice \
-				--headless \
-				--convert-to pdf:writer_pdf_Export \
-				--outdir ${TEMPORARY_PDF_PATH} \
-				${docxPath}
-		`, (err) => {
-			if (err) {
+		}
+
+		const docx = files.document as UploadedFile | undefined | null;
+		if (!is_present(docx)){
+			fk({status: 400, message: "No file with key [document] was provided"})
+			return;
+		}
+
+		const docx_path = docx.tempFilePath;
+		// be aware of docx path, this is passed to an exec
+		doc_to_pdf(docx_path, 
+			(pdf_path) => {
+				get_file(pdf_path, 
+					(data) => sk(data), 
+					(err) => {
+						console.error(err);
+						fk({status: 500, message: "Could not read the PDF file from filesystem."})
+					}
+				)
+			}, 
+			(err) => {
 				console.error(err);
-				res.status(500).send("Libreoffice error")
-				return;
+				fk({status: 500, message: "Libreoffice error"})
 			}
-			const pdfPath = `${TEMPORARY_PDF_PATH}/${docxName}.pdf`
-			console.log(pdfPath);
-			
-			readFile(pdfPath, (err, data) => {
-				if (err){
-					res.status(500).send("Could not read the PDF file from filesystem.")
-					return;
-				}
-				res.status(200)
-				.setHeader('Content-Type', 'application/pdf')
-				.send(data);
-			})
-		})
-	})
-	
+		)
 }
 
-const applyMiddleware: (server: Express) => void = (server) => {
+const apply_middleware: (server: Express) => void = (server) => {
 	server.use(fileUpload({
 		useTempFiles: true,
 		preserveExtension: 6,
@@ -76,13 +56,30 @@ const applyMiddleware: (server: Express) => void = (server) => {
 
 const start: () => void = () => {
 	const server = express();
-	applyMiddleware(server);
+	apply_middleware(server);
 
-	server.post('/docx-to-pdf', docxToPdfHandler)
+	server.post('/docx-to-pdf', (req, res) => 
+		docx_to_pdf_handler(
+			(data) => {
+				res
+				.status(200)
+				.setHeader('Content-Type', 'application/pdf')
+				.send(data)
+			},
+			({status, message}) => {
+				res
+				.status(status)
+				.send(message)
+			},
+			req.files
+		)
+	)
+
 	server.listen(PORT, () => {
 		console.log(`Started listening on port ${PORT}`);
 	})
 
+	// TODO: Cleaning up timeout
 }
 
-start()
+start();

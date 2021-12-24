@@ -1,0 +1,1 @@
+export  const is_present = <R>(x: R): x is NonNullable<R> => x !== null && x !== undefined;
