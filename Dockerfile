@@ -12,6 +12,8 @@ RUN apt install -y libreoffice
 RUN apt install -y yarn
 RUN apt install -y nodejs
 
+RUN mkdir /tmp/generated_pdfs
+RUN mkdir /tmp/uploaded_docx
 RUN mkdir /root/pdf_generator
 WORKDIR /root/pdf_generator
 
