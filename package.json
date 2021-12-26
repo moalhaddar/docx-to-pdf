@@ -18,6 +18,8 @@
   },
   "scripts": {
     "start:production": "ts-node ./src/index.ts",
-    "start": "nodemon -L -w ./src/** --exec ts-node ./src/index.ts"
+    "start": "nodemon -L -e js,ts -w \"./src/**\" --exec \"ts-node ./src/index.ts\"",
+    "docker:build": "docker-compose up -d --build",
+    "docker:logs": "docker-compose logs -tf --tail=100"
   }
 }

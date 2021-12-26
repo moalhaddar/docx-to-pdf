@@ -3,9 +3,9 @@ services:
     image: pdf_generator
     container_name: pdf_generator
     build: ./
+    entrypoint: ['yarn', 'start']
     ports:
       - "9999:9999"
     volumes:
-      - ./generated_pdfs:/tmp/generated_pdfs
       - ./src:/root/pdf_generator/src
       - ./fonts:/usr/share/fonts/custom # All custom fonts go here
