@@ -4,6 +4,11 @@ services:
     container_name: pdf_generator
     build: ./
     entrypoint: ['yarn', 'start']
+    environment:
+      - CLEANUP_AUTOMATION_DRY_MODE=OFF
+      - CLEANUP_AUTOMATION_INTERVAL_MS=50000
+      - PORT=9999
+      - FILE_MAX_AGE_IN_SECONDS=300
     ports:
       - "9999:9999"
     volumes:

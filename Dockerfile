@@ -25,4 +25,8 @@ COPY ./src ./src
 # Copy all the fonts as some might be missing from the default installation
 ADD ./fonts /usr/share/fonts 
 
+ENV CLEANUP_AUTOMATION_DRY_MODE=OFF
+ENV CLEANUP_AUTOMATION_INTERVAL_MS=50000
+ENV PORT=9999
+ENV FILE_MAX_AGE_IN_SECONDS=300
 ENTRYPOINT ["yarn", "start:production"]
