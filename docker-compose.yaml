@@ -3,7 +3,7 @@ services:
     image: pdf_generator
     container_name: pdf_generator
     build: ./
-    entrypoint: ['yarn', 'start']
+    # entrypoint: ['yarn', 'start']
     environment:
       - CLEANUP_AUTOMATION_DRY_MODE=OFF
       - CLEANUP_AUTOMATION_INTERVAL_MS=50000

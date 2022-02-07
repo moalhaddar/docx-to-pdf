@@ -1,9 +1,10 @@
 #!/bin/bash
 
-echo "Tailing stderr log file ..."
+echo "Tailing supervisor log files ..."
 echo "Starting docx to pdf service"
-
+supervisord
 supervisorctl tail -f docx-to-pdf stdout &
+supervisorctl tail -f docx-to-pdf stderr &
 
 function die {
 	echo "Received SIGTERM/SIGINT/SIGUP signal."
