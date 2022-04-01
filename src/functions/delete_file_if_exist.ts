@@ -12,7 +12,7 @@ export const cleanup_file:
 				() => delete_file(file_path, logger, fk, sk),
 			)
 
-export const cleanup_files: (file_paths: string[], logger: logger_function_type, fk: (error: NodeJS.ErrnoException) => void, sk: () => void) => void 
+export const cleanup_files: (file_paths: string[], logger: logger_function_type, fk: (step: string) => void, sk: () => void) => void 
 	= (file_paths, logger, fk, sk) => {
 		Promise.all(
 			file_paths
@@ -22,5 +22,5 @@ export const cleanup_files: (file_paths: string[], logger: logger_function_type,
 				)
 			)
 		).then(sk)
-		.catch(fk)
+		.catch(() => fk('cleaning files'))
 	}

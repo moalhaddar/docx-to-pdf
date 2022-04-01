@@ -16,6 +16,7 @@ RUN apt install -y supervisor
 
 RUN mkdir /tmp/generated_pdfs
 RUN mkdir /tmp/uploaded_docx
+RUN mkdir /tmp/libreoffice_profiles
 RUN mkdir /docx-to-pdf
 WORKDIR /docx-to-pdf
 

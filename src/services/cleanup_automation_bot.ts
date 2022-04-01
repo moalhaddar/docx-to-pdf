@@ -1,4 +1,4 @@
-import { CLEANUP_AUTOMATION_DRYMODE, CLEANUP_AUTOMATION_INTERVAL_MS, FILE_MAX_AGE_IN_SECONDS, TEMPORARY_PDF_PATH, TEMPORARY_UPLOAD_PATH } from "../constants";
+import { CLEANUP_AUTOMATION_DRYMODE, CLEANUP_AUTOMATION_INTERVAL_MS, FILE_MAX_AGE_IN_SECONDS, TEMPORARY_LIBREOFFICE_PROFILES_PATH, TEMPORARY_PDF_PATH, TEMPORARY_UPLOAD_PATH } from "../constants";
 import { cleanup_files } from "../functions/delete_file_if_exist";
 import { get_files_in_dirs } from "../functions/get_files_in_dir";
 import { get_files_older_than_n_seconds } from "../functions/get_files_older_than";
@@ -25,13 +25,13 @@ export const start_cleanup_automation_bot: () => void = () => {
 		prepare_for_next_cleanup(logger);
 	}
 
-	const fk = () => {
-		logger('Cleanup automation failed');
+	const fk = (step: string) => {
+		logger(`Cleanup automation failed, step: ${step}`);
 		prepare_for_next_cleanup(logger);
 	}
 
 	get_files_in_dirs(
-		[TEMPORARY_PDF_PATH, TEMPORARY_UPLOAD_PATH],
+		[TEMPORARY_PDF_PATH, TEMPORARY_UPLOAD_PATH, TEMPORARY_LIBREOFFICE_PROFILES_PATH],
 		(all_file_paths) => {
 			get_files_older_than_n_seconds(
 				all_file_paths, 

@@ -12,7 +12,7 @@ export const get_files_in_dir: (dir_path: string, sk: (files_paths: string[]) =>
 		}
 )
 
-export const get_files_in_dirs: (dir_paths: string[], sk: (file_paths: string[]) => void, fk: () => void) => void = (dir_paths, sk, fk) => 
+export const get_files_in_dirs: (dir_paths: string[], sk: (file_paths: string[]) => void, fk: (step: string) => void) => void = (dir_paths, sk, fk) => 
 	Promise.all(
 		dir_paths.map(
 			dir_path => new Promise<string[]>((res, rej) => 
@@ -21,4 +21,4 @@ export const get_files_in_dirs: (dir_paths: string[], sk: (file_paths: string[])
 		)
 	)
 	.then((files_per_dir) => sk(flatten(files_per_dir)))
-	.catch(fk)
+	.catch(() => fk('Get files in dirs'))
