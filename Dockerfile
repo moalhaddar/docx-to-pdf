@@ -12,7 +12,6 @@ RUN apt update
 RUN apt install -y libreoffice
 RUN apt install -y yarn
 RUN apt install -y nodejs
-RUN apt install -y supervisor
 
 RUN mkdir /tmp/generated_pdfs
 RUN mkdir /tmp/uploaded_docx
@@ -25,8 +24,6 @@ COPY ./yarn.lock .
 RUN yarn
 
 COPY ./src ./src
-COPY ./docker-entrypoint.sh ./
-COPY ./supervisor.conf /etc/supervisor/conf.d/supervisor.conf
 # Copy all the fonts as some might be missing from the default installation
 ADD ./fonts /usr/share/fonts 
 
@@ -34,5 +31,4 @@ ENV CLEANUP_AUTOMATION_DRY_MODE=OFF
 ENV CLEANUP_AUTOMATION_INTERVAL_MS=50000
 ENV PORT=9999
 ENV FILE_MAX_AGE_IN_SECONDS=300
-RUN ["chmod", "+x", "./docker-entrypoint.sh"]
-ENTRYPOINT ["./docker-entrypoint.sh"]
+ENTRYPOINT ["yarn", "start:production"]

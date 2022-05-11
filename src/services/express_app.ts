@@ -7,23 +7,26 @@ import { make_logger } from "../functions/make_logger";
 export const start_express: () => void = () => {
 	const server = express();
 	const logger = make_logger(`[EXPRESS]`);
-	
 	apply_middleware(server);
 
-	server.post('/docx-to-pdf', (req, res) => 
+	server.get
+
+	server.post('/docx-to-pdf', (req, res) =>
 		docx_to_pdf_handler(
 			req.files,
 			logger,
-			function onError({status, message}) {
+			function onError({ status, message }) {
+				logger(`HTTP: ${status}, Message: ${message}`)
 				res
-				.status(status)
-				.send(message)
+					.status(status)
+					.send(message)
 			},
-			function onSuccess(data){
+			function onSuccess(data) {
+				logger(`HTTP: 200`)
 				res
-				.status(200)
-				.setHeader('Content-Type', 'application/pdf')
-				.send(data)
+					.status(200)
+					.setHeader('Content-Type', 'application/pdf')
+					.send(data)
 			}
 		)
 	)
