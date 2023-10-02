@@ -1,34 +1,63 @@
-FROM ubuntu:20.04
-ENV DEBIAN_FRONTEND=noninteractive 
-RUN apt update
-RUN apt upgrade -y
-RUN apt install -y curl gnupg2
-RUN curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | apt-key add -
-RUN curl -fsSL https://deb.nodesource.com/setup_17.x | bash -
-RUN apt-key adv --keyserver hkps://keyserver.ubuntu.com --recv-keys 83FBA1751378B444
-RUN echo "deb https://dl.yarnpkg.com/debian/ stable main" | tee /etc/apt/sources.list.d/yarn.list
-RUN echo "deb http://ppa.launchpad.net/libreoffice/libreoffice-7-0/ubuntu focal main" | tee /etc/apt/sources.list.d/libreoffice.list
-RUN apt update
-RUN apt install -y libreoffice
-RUN apt install -y yarn
-RUN apt install -y nodejs
+# ---- Base Stage ----
+FROM ubuntu:20.04 AS base
+ENV DEBIAN_FRONTEND=noninteractive
 
-RUN mkdir /tmp/generated_pdfs
-RUN mkdir /tmp/uploaded_docx
-RUN mkdir /tmp/libreoffice_profiles
-RUN mkdir /docx-to-pdf
+# Install LibreOffice
+RUN apt update && \
+    apt upgrade -y && \
+    apt install -y software-properties-common && \
+    add-apt-repository ppa:libreoffice/ppa && \
+    apt update && \
+    apt install -y libreoffice && \
+    apt clean && \
+    rm -rf /var/lib/apt/lists/* 
+
+
+# ---- Node Stage ----
+FROM base AS node
+
+# Install NodeJS and Yarn
+RUN apt-get update && \
+    apt-get install -y ca-certificates curl gnupg && \
+    mkdir -p /etc/apt/keyrings && \
+    curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg
+
+ARG NODE_MAJOR=20
+RUN echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_$NODE_MAJOR.x nodistro main" | tee /etc/apt/sources.list.d/nodesource.list
+
+RUN apt-get update && \
+    apt-get install nodejs -y && \
+    npm install -g yarn
+
+# ---- Build Stage ----
+FROM node AS build
+
+# Configuration and Work Directory setup
+RUN mkdir /tmp/generated_pdfs && \
+    mkdir /tmp/uploaded_docx && \
+    mkdir /tmp/libreoffice_profiles && \
+    mkdir /docx-to-pdf
+
 WORKDIR /docx-to-pdf
 
 COPY ./package.json .
 COPY ./yarn.lock .
-RUN yarn
+RUN yarn && yarn cache clean
 
 COPY ./src ./src
-# Copy all the fonts as some might be missing from the default installation
-ADD ./fonts /usr/share/fonts 
 
-ENV CLEANUP_AUTOMATION_DRY_MODE=OFF
-ENV CLEANUP_AUTOMATION_INTERVAL_MS=50000
-ENV PORT=9999
-ENV FILE_MAX_AGE_IN_SECONDS=300
+
+# ---- Release Stage ----
+FROM node AS release
+
+COPY --from=build /tmp /tmp
+COPY --from=build /docx-to-pdf /docx-to-pdf
+ADD ./fonts /usr/share/fonts
+
+WORKDIR /docx-to-pdf
+ENV CLEANUP_AUTOMATION_DRY_MODE=OFF \
+    CLEANUP_AUTOMATION_INTERVAL_MS=50000 \
+    PORT=9999 \
+    FILE_MAX_AGE_IN_SECONDS=300
+
 ENTRYPOINT ["yarn", "start:production"]
