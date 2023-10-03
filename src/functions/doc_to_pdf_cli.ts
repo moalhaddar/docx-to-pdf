@@ -12,7 +12,7 @@ const random_str: (length: number) => string = (length) => {
 }
 	
 
-export const doc_to_pdf: (docx_path: string, logger: logger_function_type, fk: (err: ExecException) => void, sk: (pdfPath: string) => void) => void 
+export const doc_to_pdf_cli: (docx_path: string, logger: logger_function_type, fk: (err: ExecException) => void, sk: (pdfPath: string) => void) => void 
 	= (docx_path, logger, fk, sk) => 
 		// docx path is a temporary file, not a user input
 		exec(`

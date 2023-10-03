@@ -11,6 +11,28 @@ export const start_express: () => void = () => {
 
 	server.post('/docx-to-pdf', (req, res) =>
 		docx_to_pdf_handler(
+			'cli',
+			req.files,
+			logger,
+			function onError({ status, message }) {
+				logger(`HTTP: ${status}, Message: ${message}`)
+				res
+					.status(status)
+					.send(message)
+			},
+			function onSuccess(data) {
+				logger(`HTTP: 200`)
+				res
+					.status(200)
+					.setHeader('Content-Type', 'application/pdf')
+					.send(data)
+			}
+		)
+	)
+
+	server.post('/docx-to-pdf/uno', (req, res) =>
+		docx_to_pdf_handler(
+			'uno',
 			req.files,
 			logger,
 			function onError({ status, message }) {
