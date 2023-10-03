@@ -14,8 +14,8 @@ import kotlin.io.path.createTempDirectory
 @Component
 class LibreOfficeServer() {
     val logger = logger()
-    val libreoffceUserProfilePath: Path = createTempDirectory(prefix = "docx-to-pdf")
-    val process: Process;
+    private final val libreoffceUserProfilePath: Path = createTempDirectory(prefix = "docx-to-pdf")
+    private final val process: Process;
     val host = "127.0.0.1"
     val port = "2002"
 
@@ -52,11 +52,11 @@ class LibreOfficeServer() {
 
         process.onExit().thenAccept {
             logger.info("[LibreOffice] Deleting profile: $libreoffceUserProfilePath")
-            FileSystemUtils.deleteRecursively(libreoffceUserProfilePath);
+            FileSystemUtils.deleteRecursively(libreoffceUserProfilePath)
             logger.info("[LibreOffice] Process exited with status: ${it.exitValue()}")
         }
 
-        this.process = process;
+        this.process = process
     }
 
     @Bean
