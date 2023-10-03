@@ -55,9 +55,13 @@ COPY --from=build /docx-to-pdf /docx-to-pdf
 ADD ./fonts /usr/share/fonts
 
 WORKDIR /docx-to-pdf
+
+ARG PORT=9999
 ENV CLEANUP_AUTOMATION_DRY_MODE=OFF \
     CLEANUP_AUTOMATION_INTERVAL_MS=50000 \
-    PORT=9999 \
+    PORT=${PORT} \
     FILE_MAX_AGE_IN_SECONDS=300
+
+EXPOSE ${PORT}
 
 ENTRYPOINT ["yarn", "start:production"]
