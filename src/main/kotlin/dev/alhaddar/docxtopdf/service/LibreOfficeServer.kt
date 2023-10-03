@@ -1,10 +1,8 @@
 package dev.alhaddar.docxtopdf.service
 
 import dev.alhaddar.docxtopdf.logger
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import org.springframework.boot.actuate.health.Health
 import org.springframework.boot.actuate.health.HealthIndicator
 import org.springframework.context.annotation.Bean
@@ -12,7 +10,7 @@ import org.springframework.stereotype.Component
 import kotlin.io.path.createTempDirectory
 
 @Component
-class UnoServer {
+class LibreOfficeServer {
     val logger = logger()
 
     val process: Process = startProcess();
@@ -61,12 +59,12 @@ class UnoServer {
     }
 
     @Bean
-    fun unoserverHealthIndicator(): HealthIndicator {
+    fun libreOfficeServerHealthIndicator(): HealthIndicator {
         return HealthIndicator {
             if (process.isAlive) {
-                Health.up().withDetail("message", "Unoserver is running").build()
+                Health.up().withDetail("message", "LibreOffice server is running").build()
             } else {
-                Health.down().withDetail("message", "Unoserver is not running").build()
+                Health.down().withDetail("message", "LibreOffice server is not running").build()
             }
         }
     }
