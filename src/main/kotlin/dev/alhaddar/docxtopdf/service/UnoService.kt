@@ -16,8 +16,6 @@ import com.sun.star.uno.XComponentContext
 
 class UnoService {
     fun convert() {
-        Thread.sleep(2000); // todo fix later;
-
         val xLocalContext = createInitialComponentContext(null)
         val xLocalServiceManager = xLocalContext.serviceManager
 
@@ -63,14 +61,14 @@ class UnoService {
 
         val xLoader =  UnoRuntime.queryInterface(XComponentLoader::class.java, desktop)
 
-        val lProperties = mutableListOf<PropertyValue>();
+        val loadProps = mutableListOf<PropertyValue>();
         val prop0 = PropertyValue();
         prop0.Name = "ReadOnly";
         prop0.Value = true;
-        lProperties.add(prop0);
+        loadProps.add(prop0);
 
         val xDocument = xLoader.loadComponentFromURL(
-            "file:///home/moalhaddar/credit_advice.docx", "_default", FrameSearchFlag.CHILDREN, lProperties.toTypedArray()
+            "file:///home/moalhaddar/credit_advice.docx", "_default", FrameSearchFlag.CHILDREN, loadProps.toTypedArray()
         )
 
         val export_type = xType.queryTypeByURL("file:///dummy.pdf")
@@ -79,11 +77,9 @@ class UnoService {
         val xStorable =  UnoRuntime.queryInterface(XStorable::class.java, xDocument)
 
         val storeProps = mutableListOf<PropertyValue>();
-
         val prop1 = PropertyValue();
         prop1.Name = "FilterName";
         prop1.Value = "writer_pdf_Export"
-
         val prop2 = PropertyValue();
         prop2.Name = "Overwrite";
         prop2.Value = true;
@@ -93,33 +89,6 @@ class UnoService {
 
         xStorable.storeToURL(exportPath, storeProps.toTypedArray())
 
-//        val componentContext = createInitialComponentContext(null);
-//        val service = componentContext.serviceManager
-        // Create a new URL resolver
-//        val resolver = UnoRuntime.queryInterface(
-//            XUnoUrlResolver::class.java,
-//            service.createInstanceWithContext("com.sun.star.bridge.UnoUrlResolver", componentContext)
-//        )
 
-//        val localMachineContext = UnoRuntime.queryInterface(
-//            XComponentContext::class.java,
-//            resolver.resolve("uno:socket,host=127.0.0.1,port=2002;urp;StarOffice.ComponentContext")
-//        ) as XComponentContext
-
-
-//        val desktop = UnoRuntime.queryInterface(
-//            XDesktop::class.java,
-//            service.createInstanceWithContext("com.sun.star.frame.Desktop", localMachineContext)
-//        )
-//
-//        val filterService = UnoRuntime.queryInterface(
-//            XFilter::class.java,
-//            service.createInstanceWithContext("com.sun.star.document.FilterFactory", localMachineContext)
-//        )
-//
-//        val typeService = UnoRuntime.queryInterface(
-//            XTypeDetection::class.java,
-//            service.createInstanceWithContext("com.sun.star.document.TypeDetection", localMachineContext)
-//        )
     }
 }
