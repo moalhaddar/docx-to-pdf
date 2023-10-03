@@ -18,7 +18,7 @@ class LibreOfficeServer {
     val host = "127.0.0.1"
     val port = "2002"
 
-    fun startProcess(): Process {
+    final fun startProcess(): Process {
         val libreoffceUserProfilePath = createTempDirectory(prefix = "docx-to-pdf")
 
         logger.info("[LibreOffice] Starting server")
@@ -55,7 +55,7 @@ class LibreOfficeServer {
             logger.info("[LibreOffice] Process exited with status: ${it.exitValue()}")
         }
 
-        return process;
+        return process
     }
 
     @Bean
