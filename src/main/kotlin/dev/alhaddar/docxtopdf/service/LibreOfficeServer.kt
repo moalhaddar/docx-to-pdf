@@ -13,14 +13,14 @@ import kotlin.io.path.createTempDirectory
 
 @Component
 class LibreOfficeServer() {
-    val logger = logger()
+    private final val logger = logger()
     private final val libreoffceUserProfilePath: Path = createTempDirectory(prefix = "docx-to-pdf")
-    private final val process: Process;
+    private final val process: Process
     val host = "127.0.0.1"
     val port = "2002"
 
     init {
-        logger.info("[LibreOffice] Starting server. Profile path: {}", libreoffceUserProfilePath);
+        logger.info("[LibreOffice] Starting server. Profile path: {}", libreoffceUserProfilePath)
 
         val process = ProcessBuilder(
             "libreoffice",
