@@ -11,7 +11,6 @@ class DocxToPdfKotlinApplication
 
 fun main(args: Array<String>) {
 	runApplication<DocxToPdfKotlinApplication>(*args)
-	UnoService().convert()
 }
 
 inline fun <reified T> T.logger(): Logger {
