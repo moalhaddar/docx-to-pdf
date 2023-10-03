@@ -1,8 +1,6 @@
 # ---- Base Stage ----
 FROM ubuntu:20.04 AS base
 ENV DEBIAN_FRONTEND=noninteractive
-
-# Install LibreOffice
 RUN apt update && \
     apt upgrade -y && \
     apt install -y software-properties-common && \
@@ -15,8 +13,6 @@ RUN apt update && \
 
 # ---- Node Stage ----
 FROM base AS node
-
-# Install NodeJS and Yarn
 RUN apt-get update && \
     apt-get install -y ca-certificates curl gnupg && \
     mkdir -p /etc/apt/keyrings && \
@@ -29,15 +25,15 @@ RUN apt-get update && \
     apt-get install nodejs -y && \
     npm install -g yarn
 
+
 # ---- Unoserver Stage ----
 FROM node as node_n_python
 RUN apt-get install python3-pip -y
 RUN pip3 install unoserver
 
+
 # ---- Build Stage ----
 FROM node AS build
-
-# Configuration and Work Directory setup
 RUN mkdir /tmp/generated_pdfs && \
     mkdir /tmp/uploaded_docx && \
     mkdir /tmp/libreoffice_profiles && \
