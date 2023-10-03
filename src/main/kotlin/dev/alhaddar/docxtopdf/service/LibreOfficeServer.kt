@@ -5,36 +5,36 @@ import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import org.springframework.boot.actuate.health.Health
 import org.springframework.boot.actuate.health.HealthIndicator
+import org.springframework.boot.actuate.liquibase.LiquibaseEndpoint.LiquibaseBeanDescriptor
 import org.springframework.context.annotation.Bean
 import org.springframework.stereotype.Component
+import org.springframework.util.FileSystemUtils
+import java.nio.file.Path
 import kotlin.io.path.createTempDirectory
 
 @Component
-class LibreOfficeServer {
+class LibreOfficeServer() {
     val logger = logger()
-
-    val process: Process = startProcess()
-
+    val libreoffceUserProfilePath: Path = createTempDirectory(prefix = "docx-to-pdf")
+    val process: Process;
     val host = "127.0.0.1"
     val port = "2002"
 
-    final fun startProcess(): Process {
-        val libreoffceUserProfilePath = createTempDirectory(prefix = "docx-to-pdf")
-
-        logger.info("[LibreOffice] Starting server")
+    init {
+        logger.info("[LibreOffice] Starting server. Profile path: {}", libreoffceUserProfilePath);
 
         val process = ProcessBuilder(
-                "libreoffice",
-                "--headless",
-                "--invisible",
-                "--nocrashreport",
-                "--nodefault",
-                "--nologo",
-                "--nofirststartwizard",
-                "--norestore",
-                "-env:UserInstallation=file://${libreoffceUserProfilePath}",
-                "--accept=socket,host=${host},port=${port},tcpNoDelay=1;urp;StarOffice.ComponentContext",
-            )
+            "libreoffice",
+            "--headless",
+            "--invisible",
+            "--nocrashreport",
+            "--nodefault",
+            "--nologo",
+            "--nofirststartwizard",
+            "--norestore",
+            "-env:UserInstallation=file://${libreoffceUserProfilePath}",
+            "--accept=socket,host=${host},port=${port},tcpNoDelay=1;urp;StarOffice.ComponentContext",
+        )
             .redirectOutput(ProcessBuilder.Redirect.PIPE)
             .start()
 
@@ -52,10 +52,12 @@ class LibreOfficeServer {
         }
 
         process.onExit().thenAccept {
+            logger.info("[LibreOffice] Deleting profile: $libreoffceUserProfilePath")
+            FileSystemUtils.deleteRecursively(libreoffceUserProfilePath);
             logger.info("[LibreOffice] Process exited with status: ${it.exitValue()}")
         }
 
-        return process
+        this.process = process;
     }
 
     @Bean
