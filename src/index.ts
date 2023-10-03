@@ -3,6 +3,10 @@
 import { start_cleanup_automation_bot } from "./services/cleanup_automation_bot";
 import { start_express } from "./services/express_app";
 import './services/env_variables';
+import { start_unoserver } from "./services/unoserver";
 
-start_express();
-start_cleanup_automation_bot();
+start_unoserver()
+    .then(() => {
+        start_express();
+        start_cleanup_automation_bot();
+    })

@@ -9,8 +9,6 @@ export const start_express: () => void = () => {
 	const logger = make_logger(`[EXPRESS]`);
 	apply_middleware(server);
 
-	server.get
-
 	server.post('/docx-to-pdf', (req, res) =>
 		docx_to_pdf_handler(
 			req.files,
