@@ -5,7 +5,6 @@ import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import org.springframework.boot.actuate.health.Health
 import org.springframework.boot.actuate.health.HealthIndicator
-import org.springframework.boot.actuate.liquibase.LiquibaseEndpoint.LiquibaseBeanDescriptor
 import org.springframework.context.annotation.Bean
 import org.springframework.stereotype.Component
 import org.springframework.util.FileSystemUtils
