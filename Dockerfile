@@ -29,6 +29,11 @@ RUN apt-get update && \
     apt-get install nodejs -y && \
     npm install -g yarn
 
+# ---- Unoserver Stage ----
+FROM node as node_n_python
+RUN apt-get install python3-pip -y
+RUN pip3 install unoserver
+
 # ---- Build Stage ----
 FROM node AS build
 
@@ -48,7 +53,7 @@ COPY ./src ./src
 
 
 # ---- Release Stage ----
-FROM node AS release
+FROM node_n_python AS release
 
 COPY --from=build /tmp /tmp
 COPY --from=build /docx-to-pdf /docx-to-pdf
