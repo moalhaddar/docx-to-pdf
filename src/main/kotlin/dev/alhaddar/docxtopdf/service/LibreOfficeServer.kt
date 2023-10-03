@@ -16,8 +16,8 @@ class LibreOfficeServer() {
     private final val logger = logger()
     private final val libreoffceUserProfilePath: Path = createTempDirectory(prefix = "docx-to-pdf")
     private final val process: Process
-    val host = "127.0.0.1"
-    val port = "2002"
+    private final val host = "127.0.0.1"
+    private final val port = "2002"
 
     init {
         logger.info("[LibreOffice] Starting server. Profile path: {}", libreoffceUserProfilePath)
