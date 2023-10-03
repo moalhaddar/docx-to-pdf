@@ -19,6 +19,36 @@
 	</properties>
 	<dependencies>
 		<dependency>
+			<groupId>org.openoffice</groupId>
+			<artifactId>bootstrap-connector</artifactId>
+			<version>0.1.1</version>
+		</dependency>
+		<dependency>
+			<groupId>org.openoffice</groupId>
+			<artifactId>ridl</artifactId>
+			<version>4.1.2</version>
+		</dependency>
+		<dependency>
+			<groupId>org.openoffice</groupId>
+			<artifactId>jurt</artifactId>
+			<version>4.1.2</version>
+		</dependency>
+		<dependency>
+			<groupId>org.openoffice</groupId>
+			<artifactId>bootstrap-connector</artifactId>
+			<version>0.1.1</version>
+		</dependency>
+		<dependency>
+			<groupId>org.openoffice</groupId>
+			<artifactId>juh</artifactId>
+			<version>3.1.0</version>
+		</dependency>
+		<dependency>
+			<groupId>org.openoffice</groupId>
+			<artifactId>unoil</artifactId>
+			<version>3.0.0</version>
+		</dependency>
+		<dependency>
 			<groupId>org.jetbrains.kotlinx</groupId>
 			<artifactId>kotlinx-coroutines-core</artifactId>
 			<version>1.5.0</version>

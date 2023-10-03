@@ -32,7 +32,7 @@ class LibreOfficeServer() {
             "--nofirststartwizard",
             "--norestore",
             "-env:UserInstallation=file://${libreoffceUserProfilePath}",
-            "--accept=socket,host=${host},port=${port},tcpNoDelay=1;urp;StarOffice.ComponentContext",
+            "--accept=socket,host=127.0.0.1,port=2002,tcpNoDelay=1;urp;StarOffice.ComponentContext",
         )
             .redirectOutput(ProcessBuilder.Redirect.PIPE)
             .start()

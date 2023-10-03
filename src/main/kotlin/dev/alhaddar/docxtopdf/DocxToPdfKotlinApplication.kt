@@ -1,5 +1,6 @@
 package dev.alhaddar.docxtopdf
 
+import dev.alhaddar.docxtopdf.service.UnoService
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import org.springframework.boot.autoconfigure.SpringBootApplication
@@ -10,6 +11,7 @@ class DocxToPdfKotlinApplication
 
 fun main(args: Array<String>) {
 	runApplication<DocxToPdfKotlinApplication>(*args)
+	UnoService().convert()
 }
 
 inline fun <reified T> T.logger(): Logger {
