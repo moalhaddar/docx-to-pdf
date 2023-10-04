@@ -10,12 +10,15 @@ import com.sun.star.frame.FrameSearchFlag
 import com.sun.star.frame.XComponentLoader
 import com.sun.star.frame.XDesktop
 import com.sun.star.frame.XStorable
+import com.sun.star.lib.uno.adapter.OutputStreamToXOutputStreamAdapter
 import com.sun.star.uno.UnoRuntime
 import com.sun.star.uno.XComponentContext
-
+import dev.alhaddar.docxtopdf.logger
+import java.io.ByteArrayOutputStream
 
 class UnoService {
-    fun convert() {
+    val logger = logger();
+    fun convert(inputFilePath: String): ByteArrayOutputStream {
         val xLocalContext = createInitialComponentContext(null)
         val xLocalServiceManager = xLocalContext.serviceManager
 
@@ -67,12 +70,20 @@ class UnoService {
         prop0.Value = true;
         loadProps.add(prop0);
 
-        val xDocument = xLoader.loadComponentFromURL(
-            "file:///home/moalhaddar/credit_advice.docx", "_default", FrameSearchFlag.CHILDREN, loadProps.toTypedArray()
-        )
+        // not using an input stream because it's horribly slow for some reason.
+        val importPath = "file://${inputFilePath}";
 
-        val export_type = xType.queryTypeByURL("file:///dummy.pdf")
-        val exportPath = "file:///home/moalhaddar/dummy.pdf"
+        logger.info("[UNO] Loading input: ${importPath}.")
+        val xDocument = xLoader.loadComponentFromURL(
+            importPath, "_default", FrameSearchFlag.CHILDREN, loadProps.toTypedArray()
+        )
+        logger.info("[UNO] End loading input.")
+
+//        val export_type = xType.queryTypeByURL("file:///dummy.pdf")
+//        val exportPath = "file:///home/moalhaddar/dummy.pdf"
+        val exportPath = "private:stream"
+        val outputStream = ByteArrayOutputStream();
+        val xOutputStream = OutputStreamToXOutputStreamAdapter(outputStream);
 
         val xStorable =  UnoRuntime.queryInterface(XStorable::class.java, xDocument)
 
@@ -83,12 +94,21 @@ class UnoService {
         val prop2 = PropertyValue();
         prop2.Name = "Overwrite";
         prop2.Value = true;
+        val prop3 = PropertyValue();
+        prop3.Name = "OutputStream"
+        prop3.Value = xOutputStream;
 
         storeProps.add(prop1)
         storeProps.add(prop2)
+        storeProps.add(prop3)
 
+        logger.info("[UNO] Storing document.")
         xStorable.storeToURL(exportPath, storeProps.toTypedArray())
+        logger.info("[UNO] End Storing document.")
 
+        return outputStream;
+
+//        xDocument.dispose(); TODO
 
     }
 }
