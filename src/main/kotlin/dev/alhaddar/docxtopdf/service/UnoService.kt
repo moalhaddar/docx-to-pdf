@@ -1,24 +1,14 @@
 package dev.alhaddar.docxtopdf.service
 
 import com.sun.star.beans.PropertyValue
-import com.sun.star.beans.XPropertySet
-import com.sun.star.bridge.XUnoUrlResolver
-import com.sun.star.comp.helper.Bootstrap.createInitialComponentContext
-import com.sun.star.document.XFilter
-import com.sun.star.document.XTypeDetection
 import com.sun.star.frame.FrameSearchFlag
 import com.sun.star.frame.XComponentLoader
-import com.sun.star.frame.XDesktop
 import com.sun.star.frame.XStorable
 import com.sun.star.lang.XComponent
 import com.sun.star.lib.uno.adapter.OutputStreamToXOutputStreamAdapter
 import com.sun.star.uno.UnoRuntime
 import com.sun.star.uno.XComponentContext
-import com.sun.star.xml.dom.XDocument
 import dev.alhaddar.docxtopdf.logger
-import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 import org.springframework.stereotype.Service
 import java.io.ByteArrayOutputStream
 
