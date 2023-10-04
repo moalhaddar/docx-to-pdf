@@ -70,7 +70,9 @@ class UnoService {
         prop0.Value = true;
         loadProps.add(prop0);
 
-        // not using an input stream because it's horribly slow for some reason.
+        // Not using an input stream because it's horribly slow.
+        // The reason is that the byte array will be copied to the C++ side of the UNO.
+        // Read: https://libreoffice.freedesktop.narkive.com/2sujB3BI/loader-loadcomponentfromurl-works-slow-when-we-are-restoring-calc-sheet-from-byte-array-loader
         val importPath = "file://${inputFilePath}";
 
         logger.info("[UNO] Loading input: ${importPath}.")
