@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.multipart.MultipartFile
-import kotlin.io.path.createTempFile;
+import kotlin.io.path.createTempFile
 import kotlin.io.path.deleteExisting
 import kotlin.io.path.outputStream
 
@@ -17,8 +17,7 @@ class PdfController(val unoService: UnoService) {
     val logger = logger()
     @PostMapping("/pdf")
     fun getPdf(@RequestParam("document") file: MultipartFile): ResponseEntity<ByteArray>{
-        val tempFilePath = createTempFile(suffix = ".docx");
-
+        val tempFilePath = createTempFile(suffix = ".docx")
             file.inputStream.use { input ->
                 tempFilePath.outputStream().use { output ->
                     input.copyTo(output)
@@ -29,7 +28,9 @@ class PdfController(val unoService: UnoService) {
             .convert(tempFilePath.toUri().toString())
             .toByteArray()
 
-        tempFilePath.deleteExisting();
+        tempFilePath.deleteExisting()
+
+        logger.info("Successfully generated PDF")
 
         return ResponseEntity
             .status(200)
