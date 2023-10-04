@@ -8,8 +8,12 @@ import org.springframework.boot.actuate.health.HealthIndicator
 import org.springframework.context.annotation.Bean
 import org.springframework.stereotype.Component
 import org.springframework.util.FileSystemUtils
+import java.io.IOException
+import java.net.InetSocketAddress
+import java.net.Socket
 import java.nio.file.Path
 import kotlin.io.path.createTempDirectory
+
 
 @Component
 class LibreOfficeServer() {
@@ -20,7 +24,10 @@ class LibreOfficeServer() {
     private final val port = "2002"
 
     init {
-        logger.info("[LibreOffice] Starting server. Profile path: {}", libreoffceUserProfilePath)
+        logger.info("[LibreOffice] Starting server..");
+        logger.info("[LibreOffice] Profile path: $libreoffceUserProfilePath")
+        logger.info("[LibreOffice] Host: $host")
+        logger.info("[LibreOffice] Port: $port")
 
         val process = ProcessBuilder(
             "libreoffice",
@@ -32,7 +39,7 @@ class LibreOfficeServer() {
             "--nofirststartwizard",
             "--norestore",
             "-env:UserInstallation=file://${libreoffceUserProfilePath}",
-            "--accept=socket,host=127.0.0.1,port=2002,tcpNoDelay=1;urp;StarOffice.ComponentContext",
+            "--accept=socket,host=${host},port=${port},tcpNoDelay=1;urp;StarOffice.ComponentContext",
         )
             .redirectOutput(ProcessBuilder.Redirect.PIPE)
             .start()
@@ -54,6 +61,33 @@ class LibreOfficeServer() {
             logger.info("[LibreOffice] Deleting profile: $libreoffceUserProfilePath")
             FileSystemUtils.deleteRecursively(libreoffceUserProfilePath)
             logger.info("[LibreOffice] Process exited with status: ${it.exitValue()}")
+        }
+
+        val startTime = System.currentTimeMillis()
+        val timeout = 10 * 1000;
+
+        while (true) {
+            try {
+                Socket().use { socket ->
+                    socket.connect(InetSocketAddress(host, port.toInt()), 10 * 1000)
+                    logger.info("[LibreOffice] Successfully started server on $host:$port")
+                }
+                break;
+            } catch (e: IOException) {
+                // Check if the timeout has been exceeded
+
+                // Check if the timeout has been exceeded
+                if (System.currentTimeMillis() - startTime > timeout) {
+                    logger.error("[LibreOffice] Connection attempt timed out after $timeout milliseconds.")
+                    break
+                }
+                // Sleep for a short interval before retrying
+                try {
+                    Thread.sleep(500)
+                } catch (ie: InterruptedException) {
+                    Thread.currentThread().interrupt()
+                }
+            }
         }
 
         this.process = process
