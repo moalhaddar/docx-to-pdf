@@ -13,20 +13,20 @@ import kotlin.io.path.deleteExisting
 import kotlin.io.path.outputStream
 
 @RestController
-class PdfController {
+class PdfController(val unoService: UnoService) {
     val logger = logger()
     @PostMapping("/pdf")
     fun getPdf(@RequestParam("document") file: MultipartFile): ResponseEntity<ByteArray>{
         val tempFilePath = createTempFile(suffix = ".docx");
 
-        file.inputStream.use { input ->
-            tempFilePath.outputStream().use { output ->
-                input.copyTo(output)
+            file.inputStream.use { input ->
+                tempFilePath.outputStream().use { output ->
+                    input.copyTo(output)
+                }
             }
-        }
 
-        val pdf = UnoService()
-            .convert(tempFilePath.toString())
+        val pdf = unoService
+            .convert(tempFilePath.toUri().toString())
             .toByteArray()
 
         tempFilePath.deleteExisting();

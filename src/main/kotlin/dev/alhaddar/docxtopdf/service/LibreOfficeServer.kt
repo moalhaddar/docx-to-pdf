@@ -18,14 +18,14 @@ import kotlin.io.path.createTempDirectory
 @Component
 class LibreOfficeServer() {
     private final val logger = logger()
-    private final val libreoffceUserProfilePath: Path = createTempDirectory(prefix = "docx-to-pdf-profile-")
+    private final val libreOfficeUserProfilePath: Path = createTempDirectory(prefix = "docx-to-pdf-profile-")
     private final val process: Process
-    private final val host = "127.0.0.1"
-    private final val port = "2002"
+    final val host = "127.0.0.1"
+    final val port = "2002"
 
     init {
         logger.info("[LibreOffice] Starting server..");
-        logger.info("[LibreOffice] Profile path: $libreoffceUserProfilePath")
+        logger.info("[LibreOffice] Profile path: $libreOfficeUserProfilePath")
         logger.info("[LibreOffice] Host: $host")
         logger.info("[LibreOffice] Port: $port")
 
@@ -38,7 +38,7 @@ class LibreOfficeServer() {
             "--nologo",
             "--nofirststartwizard",
             "--norestore",
-            "-env:UserInstallation=file://${libreoffceUserProfilePath}",
+            "-env:UserInstallation=file://${libreOfficeUserProfilePath}",
             "--accept=socket,host=${host},port=${port},tcpNoDelay=1;urp;StarOffice.ComponentContext",
         )
             .redirectOutput(ProcessBuilder.Redirect.PIPE)
@@ -58,8 +58,8 @@ class LibreOfficeServer() {
         }
 
         process.onExit().thenAccept {
-            logger.info("[LibreOffice] Deleting profile: $libreoffceUserProfilePath")
-            FileSystemUtils.deleteRecursively(libreoffceUserProfilePath)
+            logger.info("[LibreOffice] Deleting profile: $libreOfficeUserProfilePath")
+            FileSystemUtils.deleteRecursively(libreOfficeUserProfilePath)
             logger.info("[LibreOffice] Process exited with status: ${it.exitValue()}")
         }
 
