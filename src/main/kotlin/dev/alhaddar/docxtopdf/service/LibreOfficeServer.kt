@@ -25,9 +25,9 @@ class LibreOfficeServer() {
 
     init {
         logger.info("[LibreOffice] Starting server..");
-        logger.info("[LibreOffice] Profile path: $libreOfficeUserProfilePath")
-        logger.info("[LibreOffice] Host: $host")
-        logger.info("[LibreOffice] Port: $port")
+        logger.debug("[LibreOffice] Profile path: $libreOfficeUserProfilePath")
+        logger.debug("[LibreOffice] Host: $host")
+        logger.debug("[LibreOffice] Port: $port")
 
         val process = ProcessBuilder(
             "libreoffice",
@@ -58,7 +58,7 @@ class LibreOfficeServer() {
         }
 
         process.onExit().thenAccept {
-            logger.info("[LibreOffice] Deleting profile: $libreOfficeUserProfilePath")
+            logger.debug("[LibreOffice] Deleting profile: $libreOfficeUserProfilePath")
             FileSystemUtils.deleteRecursively(libreOfficeUserProfilePath)
             logger.info("[LibreOffice] Process exited with status: ${it.exitValue()}")
         }
@@ -70,12 +70,10 @@ class LibreOfficeServer() {
             try {
                 Socket().use { socket ->
                     socket.connect(InetSocketAddress(host, port.toInt()), 10 * 1000)
-                    logger.info("[LibreOffice] Successfully started server on $host:$port")
+                    logger.debug("[LibreOffice] Successfully started server on $host:$port")
                 }
                 break;
             } catch (e: IOException) {
-                // Check if the timeout has been exceeded
-
                 // Check if the timeout has been exceeded
                 if (System.currentTimeMillis() - startTime > timeout) {
                     logger.error("[LibreOffice] Connection attempt timed out after $timeout milliseconds.")

@@ -17,20 +17,11 @@ class PdfController(val unoService: UnoService) {
     val logger = logger()
     @PostMapping("/pdf")
     fun getPdf(@RequestParam("document") file: MultipartFile): ResponseEntity<ByteArray>{
-        val tempFilePath = createTempFile(suffix = ".docx")
-            file.inputStream.use { input ->
-                tempFilePath.outputStream().use { output ->
-                    input.copyTo(output)
-                }
-            }
+        logger.info("PDF Request. Docx file size: ${file.inputStream.readBytes().size} bytes.")
 
-        val pdf = unoService
-            .convert(tempFilePath.toUri().toString())
-            .toByteArray()
+        val pdf = unoService.convert(file.inputStream)
 
-        tempFilePath.deleteExisting()
-
-        logger.info("Successfully generated PDF")
+        logger.info("Successfully generated PDF. File Size: ${pdf.size} bytes.")
 
         return ResponseEntity
             .status(200)
