@@ -36,7 +36,7 @@ While not perfect, it is still the best available solution for free for renderin
 
 
 # Proposd Solution
-This service is built in Java, using spring boot, exposing a simple that takes a docx file as an input
+This service is built in Java, using spring boot, exposing a simple API that takes a docx file as an input
 and responds back with a `application/pdf` file.
 
 It achieves this by launching a LibreOffice server in the background during initialization, then starts
