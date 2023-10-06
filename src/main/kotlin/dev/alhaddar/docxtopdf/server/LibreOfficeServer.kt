@@ -14,16 +14,14 @@ import java.nio.file.Path
 import kotlin.io.path.createTempDirectory
 
 
-class LibreOfficeServer(host: String, port: Int, instanceNumber: Int) {
+class LibreOfficeServer(val host: String, val port: Int, instanceNumber: Int) {
     private val logger = logger()
     private val logPrefix = "[LibreOffice/$instanceNumber]"
     private val libreOfficeUserProfilePath: Path = createTempDirectory(prefix = "docx-to-pdf-profile-")
     private val process: Process
-    val host = host
-    val port = port
 
     init {
-        logger.info("$logPrefix Starting server instance..");
+        logger.info("$logPrefix Starting server instance..")
         logger.debug("$logPrefix Profile path: $libreOfficeUserProfilePath")
         logger.debug("$logPrefix Host: $host")
         logger.debug("$logPrefix Port: $port")
@@ -63,7 +61,7 @@ class LibreOfficeServer(host: String, port: Int, instanceNumber: Int) {
         }
 
         val startTime = System.currentTimeMillis()
-        val timeout = 10 * 1000;
+        val timeout = 10 * 1000
 
         while (true) {
             try {
@@ -71,7 +69,7 @@ class LibreOfficeServer(host: String, port: Int, instanceNumber: Int) {
                     socket.connect(InetSocketAddress(host, port.toInt()), 10 * 1000)
                     logger.debug("$logPrefix Successfully started server on $host:$port")
                 }
-                break;
+                break
             } catch (e: IOException) {
                 // Check if the timeout has been exceeded
                 if (System.currentTimeMillis() - startTime > timeout) {
