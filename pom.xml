@@ -20,11 +20,6 @@
 	<dependencies>
 		<dependency>
 			<groupId>org.openoffice</groupId>
-			<artifactId>bootstrap-connector</artifactId>
-			<version>0.1.1</version>
-		</dependency>
-		<dependency>
-			<groupId>org.openoffice</groupId>
 			<artifactId>ridl</artifactId>
 			<version>4.1.2</version>
 		</dependency>
