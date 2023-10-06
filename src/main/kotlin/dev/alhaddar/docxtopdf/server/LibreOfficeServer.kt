@@ -1,6 +1,7 @@
 package dev.alhaddar.docxtopdf.server
 
 import dev.alhaddar.docxtopdf.logger
+import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import org.springframework.boot.actuate.health.Health
@@ -14,6 +15,7 @@ import java.nio.file.Path
 import kotlin.io.path.createTempDirectory
 
 
+@OptIn(DelicateCoroutinesApi::class)
 class LibreOfficeServer(val host: String, val port: Int, instanceNumber: Int) {
     private val logger = logger()
     private val logPrefix = "[LibreOffice/$instanceNumber]"
