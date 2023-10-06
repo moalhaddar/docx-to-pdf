@@ -20,33 +20,33 @@ import kotlin.io.path.outputStream
 class UnoService(
     val pool: DesktopInstancePool
 ) {
-    val logger = logger();
+    val logger = logger()
 
     fun convert(inputStream: InputStream): ByteArray {
         val desktopInstance = pool.borrow()
         val document = loadDocumentIntoDesktopInstance(desktopInstance, inputStream)
         val outputStream = saveDocument(document)
         document.dispose() // Needed to avoid memory leak.
-        pool.giveBack(desktopInstance);
-        return outputStream.toByteArray();
+        pool.giveBack(desktopInstance)
+        return outputStream.toByteArray()
     }
 
     private fun saveDocument(document: XComponent): ByteArrayOutputStream {
-        val outputStream = ByteArrayOutputStream();
+        val outputStream = ByteArrayOutputStream()
         val exportPath = "private:stream"
-        val xOutputStream = OutputStreamToXOutputStreamAdapter(outputStream);
+        val xOutputStream = OutputStreamToXOutputStreamAdapter(outputStream)
 
         val storeProps = listOf(
             PropertyValue("FilterName", 0, "writer_pdf_Export", null),
             PropertyValue("Overwrite", 0, true, null),
             PropertyValue("OutputStream", 0, xOutputStream, null)
-        );
+        )
 
         val xStorable =  UnoRuntime.queryInterface(XStorable::class.java, document)
         logger.debug("[UNO] Storing document.")
         xStorable.storeToURL(exportPath, storeProps.toTypedArray())
         logger.debug("[UNO] End Storing document.")
-        return outputStream;
+        return outputStream
     }
 
     /**
@@ -73,7 +73,7 @@ class UnoService(
 
         tempFile.deleteExisting()
 
-        return xDocument;
+        return xDocument
     }
 
     fun createTempFileFromInput(inputStream: InputStream): Path {
@@ -83,6 +83,6 @@ class UnoService(
                 input.copyTo(output)
             }
         }
-        return tempFile;
+        return tempFile
     }
 }
