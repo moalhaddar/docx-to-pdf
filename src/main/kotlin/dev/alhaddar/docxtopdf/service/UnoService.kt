@@ -7,8 +7,8 @@ import com.sun.star.frame.XStorable
 import com.sun.star.lang.XComponent
 import com.sun.star.lib.uno.adapter.OutputStreamToXOutputStreamAdapter
 import com.sun.star.uno.UnoRuntime
-import com.sun.star.uno.XComponentContext
 import dev.alhaddar.docxtopdf.logger
+import dev.alhaddar.docxtopdf.pool.DesktopInstancePool
 import org.springframework.stereotype.Service
 import java.io.ByteArrayOutputStream
 import java.io.InputStream
@@ -17,18 +17,21 @@ import kotlin.io.path.deleteExisting
 import kotlin.io.path.outputStream
 
 @Service
-class UnoService(val xRemoteContext: XComponentContext) {
+class UnoService(
+    val pool: DesktopInstancePool
+) {
     val logger = logger();
 
     fun convert(inputStream: InputStream): ByteArray {
-        val desktop = getDesktopInstance()
-        val document = loadDocumentIntoDesktopInstance(desktop, inputStream)
-        val outputStream = saveDocumentToStream(document)
-        document.dispose()
+        val desktopInstance = pool.borrow()
+        val document = loadDocumentIntoDesktopInstance(desktopInstance, inputStream)
+        val outputStream = saveDocument(document)
+        document.dispose() // Needed to avoid memory leak.
+        pool.giveBack(desktopInstance);
         return outputStream.toByteArray();
     }
 
-    private fun saveDocumentToStream(document: XComponent): ByteArrayOutputStream {
+    private fun saveDocument(document: XComponent): ByteArrayOutputStream {
         val outputStream = ByteArrayOutputStream();
         val exportPath = "private:stream"
         val xOutputStream = OutputStreamToXOutputStreamAdapter(outputStream);
@@ -48,7 +51,8 @@ class UnoService(val xRemoteContext: XComponentContext) {
 
     /**
      * Takes the input stream and stores it temporarily on disk.
-     * The reason is that the byte array will be copied to the C++ side of the UNO.
+     * The reason is that if we send the input stream directly, then the bytes will be read by the libreoffice
+     * process extremely slowly (poor stream reading implementation).
      * Read: https://libreoffice.freedesktop.narkive.com/2sujB3BI/loader-loadcomponentfromurl-works-slow-when-we-are-restoring-calc-sheet-from-byte-array-loader
      */
     private fun loadDocumentIntoDesktopInstance(desktop: Any, inputStream: InputStream): XComponent {
@@ -70,12 +74,6 @@ class UnoService(val xRemoteContext: XComponentContext) {
         tempFile.deleteExisting()
 
         return xDocument;
-    }
-
-    fun getDesktopInstance(): Any {
-        return xRemoteContext.serviceManager.createInstanceWithContext(
-            "com.sun.star.frame.Desktop", xRemoteContext
-        )
     }
 
     fun createTempFileFromInput(inputStream: InputStream): Path {

@@ -1,4 +1,4 @@
-package dev.alhaddar.docxtopdf.service
+package dev.alhaddar.docxtopdf.server
 
 import dev.alhaddar.docxtopdf.logger
 import kotlinx.coroutines.GlobalScope
@@ -6,7 +6,6 @@ import kotlinx.coroutines.launch
 import org.springframework.boot.actuate.health.Health
 import org.springframework.boot.actuate.health.HealthIndicator
 import org.springframework.context.annotation.Bean
-import org.springframework.stereotype.Component
 import org.springframework.util.FileSystemUtils
 import java.io.IOException
 import java.net.InetSocketAddress
@@ -15,19 +14,19 @@ import java.nio.file.Path
 import kotlin.io.path.createTempDirectory
 
 
-@Component
-class LibreOfficeServer() {
-    private final val logger = logger()
-    private final val libreOfficeUserProfilePath: Path = createTempDirectory(prefix = "docx-to-pdf-profile-")
-    private final val process: Process
-    final val host = "127.0.0.1"
-    final val port = "2002"
+class LibreOfficeServer(host: String, port: Int, instanceNumber: Int) {
+    private val logger = logger()
+    private val logPrefix = "[LibreOffice/$instanceNumber]"
+    private val libreOfficeUserProfilePath: Path = createTempDirectory(prefix = "docx-to-pdf-profile-")
+    private val process: Process
+    val host = host
+    val port = port
 
     init {
-        logger.info("[LibreOffice] Starting server..");
-        logger.debug("[LibreOffice] Profile path: $libreOfficeUserProfilePath")
-        logger.debug("[LibreOffice] Host: $host")
-        logger.debug("[LibreOffice] Port: $port")
+        logger.info("$logPrefix Starting server instance..");
+        logger.debug("$logPrefix Profile path: $libreOfficeUserProfilePath")
+        logger.debug("$logPrefix Host: $host")
+        logger.debug("$logPrefix Port: $port")
 
         val process = ProcessBuilder(
             "libreoffice",
@@ -47,20 +46,20 @@ class LibreOfficeServer() {
 
         GlobalScope.launch {
             process.inputStream.bufferedReader().use { reader ->
-                reader.forEachLine { logger.info("[LibreOffice] $it") }
+                reader.forEachLine { logger.info("$logPrefix $it") }
             }
         }
 
         GlobalScope.launch {
             process.errorStream.bufferedReader().use { reader ->
-                reader.forEachLine { logger.error("[LibreOffice] $it") }
+                reader.forEachLine { logger.error("$logPrefix $it") }
             }
         }
 
         process.onExit().thenAccept {
-            logger.debug("[LibreOffice] Deleting profile: $libreOfficeUserProfilePath")
+            logger.debug("$logPrefix Deleting profile: $libreOfficeUserProfilePath")
             FileSystemUtils.deleteRecursively(libreOfficeUserProfilePath)
-            logger.info("[LibreOffice] Process exited with status: ${it.exitValue()}")
+            logger.info("$logPrefix Process exited with status: ${it.exitValue()}")
         }
 
         val startTime = System.currentTimeMillis()
@@ -70,13 +69,13 @@ class LibreOfficeServer() {
             try {
                 Socket().use { socket ->
                     socket.connect(InetSocketAddress(host, port.toInt()), 10 * 1000)
-                    logger.debug("[LibreOffice] Successfully started server on $host:$port")
+                    logger.debug("$logPrefix Successfully started server on $host:$port")
                 }
                 break;
             } catch (e: IOException) {
                 // Check if the timeout has been exceeded
                 if (System.currentTimeMillis() - startTime > timeout) {
-                    logger.error("[LibreOffice] Connection attempt timed out after $timeout milliseconds.")
+                    logger.error("$logPrefix Connection attempt timed out after $timeout milliseconds.")
                     break
                 }
                 // Sleep for a short interval before retrying
