@@ -35,7 +35,7 @@ class DesktopInstancePool(
                 val deferred = async(Dispatchers.Default) {
                     val server = LibreOfficeServer("127.0.0.1", 2000 + it, it)
                     val context = getUnoRemoteContext(server.host, server.port.toString())
-                    val instance = getDesktopInstanceForContext(context);
+                    val instance = getDesktopInstanceForContext(context)
                     instancePool.put(instance)
                 }
                 deferredList.add(deferred)
@@ -62,7 +62,7 @@ class DesktopInstancePool(
             xLocalServiceManager.createInstanceWithContext(
                 "com.sun.star.bridge.UnoUrlResolver", xLocalContext
             )
-        );
+        )
 
         val xPropertySet = UnoRuntime.queryInterface(
             XPropertySet::class.java,

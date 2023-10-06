@@ -66,7 +66,7 @@ class LibreOfficeServer(val host: String, val port: Int, instanceNumber: Int) {
         while (true) {
             try {
                 Socket().use { socket ->
-                    socket.connect(InetSocketAddress(host, port.toInt()), 10 * 1000)
+                    socket.connect(InetSocketAddress(host, port), 10 * 1000)
                     logger.debug("$logPrefix Successfully started server on $host:$port")
                 }
                 break
