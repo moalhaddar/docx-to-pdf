@@ -19,7 +19,8 @@ class LibreOfficeServerPool(
     val size: Int
 ) {
     private val logger = logger()
-    private val serverPool: ArrayList<ProcessDescriptor> = ArrayList(size)
+    val processDescriptorsPool: ArrayList<ProcessDescriptor> = ArrayList(size)
+
     private val lock = ReentrantLock()
     private val availableCondition = lock.newCondition()
 
@@ -32,7 +33,7 @@ class LibreOfficeServerPool(
     fun reviveFromTheDead() {
         val deferredList = mutableListOf<Deferred<Any>>()
         runBlocking {
-            serverPool
+            processDescriptorsPool
                 .filter {it.status == ProcessStatus.DEAD }
                 .forEach {
                     val deferred = async(Dispatchers.IO) {
@@ -46,13 +47,13 @@ class LibreOfficeServerPool(
 
     @Scheduled(fixedDelay = 1000)
     fun healthCheck() {
-        val alive = serverPool.filter { it.status != ProcessStatus.DEAD }
+        val alive = processDescriptorsPool.filter { it.status != ProcessStatus.DEAD }
         logger.info("[LibreOfficeServerPool] Current pool size is ${alive.size}/$size")
         reviveFromTheDead()
     }
 
     fun attachProcessLifeCycleListeners() {
-        serverPool.forEach {pd ->
+        processDescriptorsPool.forEach { pd ->
             run {
                 pd.process.onStart = {
                     pd.status = ProcessStatus.AVAILABLE
@@ -72,7 +73,7 @@ class LibreOfficeServerPool(
                 "127.0.0.1",
                 2000 + it,
             )
-            serverPool.add(
+            processDescriptorsPool.add(
                 ProcessDescriptor(
                     process,
                     ProcessStatus.DEAD
@@ -81,26 +82,26 @@ class LibreOfficeServerPool(
         }
     }
 
-    fun borrow(): LibreOfficeServerProcess {
+    fun borrow(): ProcessDescriptor {
         lock.withLock {
-            if (serverPool.size == 0) {
+            if (processDescriptorsPool.size == 0) {
                 logger().error("[Pool] No enough workers available.")
                 throw ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR)
             }
 
-            var pd = serverPool.firstOrNull { it.status == ProcessStatus.AVAILABLE }
+            var pd = processDescriptorsPool.firstOrNull { it.status == ProcessStatus.AVAILABLE }
             while (pd == null) {
                 availableCondition.await() // Wait until a pair becomes available
-                pd = serverPool.firstOrNull { it.status == ProcessStatus.AVAILABLE }
+                pd = processDescriptorsPool.firstOrNull { it.status == ProcessStatus.AVAILABLE }
             }
             pd.status = ProcessStatus.BLOCKED
-            return pd.process
+            return pd
         }
     }
 
-    fun giveBack(process: LibreOfficeServerProcess) {
+    fun giveBack(pd: ProcessDescriptor) {
         lock.withLock {
-            val pd = serverPool.first() { it.process == process }
+            val pd = processDescriptorsPool.first() { it == pd }
             pd.status = ProcessStatus.AVAILABLE
             availableCondition.signal()
         }

@@ -7,16 +7,10 @@ import com.sun.star.lang.XComponent
 import com.sun.star.uno.UnoRuntime
 import com.sun.star.uno.XComponentContext
 import dev.alhaddar.docxtopdf.logger
-import dev.alhaddar.docxtopdf.server.LibreOfficeServerProcess
 import kotlinx.coroutines.*
-import org.springframework.beans.factory.annotation.Value
 import org.springframework.http.HttpStatus
-import org.springframework.scheduling.annotation.EnableScheduling
-import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Component
 import org.springframework.web.server.ResponseStatusException
-import java.util.concurrent.BlockingQueue
-import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
 
@@ -28,77 +22,60 @@ import kotlin.concurrent.withLock
     Read: https://wiki.openoffice.org/wiki/Effort/Revise_OOo_Multi-Threading
  */
 @Component
-@EnableScheduling
 class DesktopInstancePool(
-    @Value("\${pool.size:1}")
-    val size: Int
+    val serverPool: LibreOfficeServerPool
 ) {
-    private val serverInstancePairs: ArrayList<ServerInstancePair> = ArrayList(size)
-    private val availablePorts: BlockingQueue<Int> = LinkedBlockingQueue((5000 until 5000 + size).toList())
+    private val desktopDescriptorsPool: ArrayList<DesktopDescriptor> = ArrayList(serverPool.size)
 
     private val lock = ReentrantLock()
     private val availableCondition = lock.newCondition()
 
     init {
-//        fillPool()
+        fillPool()
     }
 
     fun fillPool() {
         val deferredList = mutableListOf<Deferred<Any>>()
 
         runBlocking {
-            repeat(size - serverInstancePairs.size) {
+            repeat(serverPool.size) {
+                val pd = serverPool.borrow()
                 val deferred = async(Dispatchers.IO) {
-                    initServerInstancePair()
+                    val context = getUnoRemoteContext(pd.process.host, pd.process.port.toString())
+                    val desktopInstance = getDesktopInstanceForContext(context)
+                    lock.withLock {
+                        desktopDescriptorsPool.add(
+                            DesktopDescriptor(desktopInstance, DesktopStatus.AVAILABLE)
+                        )
+                    }
                 }
                 deferredList.add(deferred)
             }
+
             deferredList.awaitAll()
         }
     }
 
-    fun initServerInstancePair() {
-        val port = availablePorts.take()
-        val server = LibreOfficeServerProcess(
-            host = "127.0.0.1",
-            port,
-        )
-
-        val context = getUnoRemoteContext(server.host, server.port.toString())
-        val instance = getDesktopInstanceForContext(context)
-        lock.withLock {
-            serverInstancePairs.add(
-                ServerInstancePair(server,instance, Status.AVAILABLE)
-            )
-        }
-    }
-
-//    @Scheduled(fixedDelay = 1000)
-    fun poolHealthCheck() {
-        logger().debug("[Health Check] Current pool size is ${serverInstancePairs.size}/$size")
-        fillPool()
-    }
-
     fun borrow(): XComponent {
         lock.withLock {
-            if (serverInstancePairs.size == 0) {
+            if (desktopDescriptorsPool.size == 0) {
                 logger().error("[Pool] No enough workers available.")
                 throw ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR)
             }
-            var pair: ServerInstancePair? = serverInstancePairs.firstOrNull { it.status == Status.AVAILABLE }
-            while (pair == null) {
+            var dd: DesktopDescriptor? = desktopDescriptorsPool.firstOrNull { it.status == DesktopStatus.AVAILABLE }
+            while (dd == null) {
                 availableCondition.await() // Wait until a pair becomes available
-                pair = serverInstancePairs.firstOrNull { it.status == Status.AVAILABLE }
+                dd = desktopDescriptorsPool.firstOrNull { it.status == DesktopStatus.AVAILABLE }
             }
-            pair.status = Status.BLOCKED
-            return pair.desktopInstance
+            dd.status = DesktopStatus.BLOCKED
+            return dd.desktopInstance
         }
     }
 
     fun giveBack(instance: XComponent) {
         lock.withLock {
-            val pair = serverInstancePairs.first() { it.desktopInstance == instance }
-            pair.status = Status.AVAILABLE
+            val pair = desktopDescriptorsPool.first() { it.desktopInstance == instance }
+            pair.status = DesktopStatus.AVAILABLE
             availableCondition.signal()
         }
     }
@@ -136,12 +113,11 @@ class DesktopInstancePool(
     }
 }
 
-enum class Status {
+enum class DesktopStatus {
     AVAILABLE, BLOCKED
 }
 
-data class ServerInstancePair(
-    val server: LibreOfficeServerProcess,
+data class DesktopDescriptor(
     val desktopInstance: XComponent,
-    var status: Status
+    var status: DesktopStatus
 )
