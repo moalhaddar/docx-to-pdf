@@ -7,9 +7,7 @@ import kotlinx.coroutines.launch
 import org.springframework.boot.actuate.health.Health
 import org.springframework.boot.actuate.health.HealthIndicator
 import org.springframework.context.annotation.Bean
-import org.springframework.http.HttpStatus
 import org.springframework.util.FileSystemUtils
-import org.springframework.web.server.ResponseStatusException
 import java.io.IOException
 import java.net.InetSocketAddress
 import java.net.Socket
@@ -18,13 +16,16 @@ import kotlin.io.path.createTempDirectory
 
 
 @OptIn(DelicateCoroutinesApi::class)
-class LibreOfficeServer(val host: String, val port: Int, onExit: (server: LibreOfficeServer) -> Unit) {
+class LibreOfficeServerProcess(val host: String, val port: Int) {
     private val logger = logger()
     private val logPrefix = "[LibreOffice/$port]"
-    private val libreOfficeUserProfilePath: Path = createTempDirectory(prefix = "docx-to-pdf-profile-")
-    private val process: Process
+    private var libreOfficeUserProfilePath: Path? = null;
+    private var process: Process? = null;
+    var onExit: (server: LibreOfficeServerProcess) -> Unit = {}
+    var onStart: (server: LibreOfficeServerProcess) -> Unit = {}
 
-    init {
+    fun connect() {
+        libreOfficeUserProfilePath = createTempDirectory(prefix = "docx-to-pdf-profile-");
         val process = ProcessBuilder(
             "libreoffice",
             "--headless",
@@ -62,6 +63,7 @@ class LibreOfficeServer(val host: String, val port: Int, onExit: (server: LibreO
             logger.debug("$logPrefix Deleting profile: $libreOfficeUserProfilePath")
             FileSystemUtils.deleteRecursively(libreOfficeUserProfilePath)
             logger.info("$logPrefix Process exited with status: ${it.exitValue()}")
+            this.process = null;
             onExit(this)
         }
 
@@ -73,6 +75,7 @@ class LibreOfficeServer(val host: String, val port: Int, onExit: (server: LibreO
             try {
                 Socket().use { socket ->
                     socket.connect(InetSocketAddress(host, port), 10 * 1000)
+                    onStart(this)
                     logger.debug("$logPrefix Successfully started server on $host:$port")
                 }
                 break
@@ -97,7 +100,7 @@ class LibreOfficeServer(val host: String, val port: Int, onExit: (server: LibreO
     @Bean
     fun libreOfficeServerHealthIndicator(): HealthIndicator {
         return HealthIndicator {
-            if (process.isAlive) {
+            if (process?.isAlive == true) {
                 Health.up().withDetail("message", "LibreOffice server is running").build()
             } else {
                 Health.down().withDetail("message", "LibreOffice server is not running").build()

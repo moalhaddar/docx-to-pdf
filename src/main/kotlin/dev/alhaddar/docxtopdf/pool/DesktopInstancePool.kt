@@ -7,7 +7,7 @@ import com.sun.star.lang.XComponent
 import com.sun.star.uno.UnoRuntime
 import com.sun.star.uno.XComponentContext
 import dev.alhaddar.docxtopdf.logger
-import dev.alhaddar.docxtopdf.server.LibreOfficeServer
+import dev.alhaddar.docxtopdf.server.LibreOfficeServerProcess
 import kotlinx.coroutines.*
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.http.HttpStatus
@@ -40,7 +40,7 @@ class DesktopInstancePool(
     private val availableCondition = lock.newCondition()
 
     init {
-        fillPool()
+//        fillPool()
     }
 
     fun fillPool() {
@@ -59,15 +59,9 @@ class DesktopInstancePool(
 
     fun initServerInstancePair() {
         val port = availablePorts.take()
-        val server = LibreOfficeServer(
+        val server = LibreOfficeServerProcess(
             host = "127.0.0.1",
             port,
-            onExit = {
-                availablePorts.put(it.port)
-                lock.withLock {
-                    serverInstancePairs.removeIf() {pair -> pair.server == it }
-                }
-            }
         )
 
         val context = getUnoRemoteContext(server.host, server.port.toString())
@@ -79,7 +73,7 @@ class DesktopInstancePool(
         }
     }
 
-    @Scheduled(fixedDelay = 1000)
+//    @Scheduled(fixedDelay = 1000)
     fun poolHealthCheck() {
         logger().debug("[Health Check] Current pool size is ${serverInstancePairs.size}/$size")
         fillPool()
@@ -147,7 +141,7 @@ enum class Status {
 }
 
 data class ServerInstancePair(
-    val server: LibreOfficeServer,
+    val server: LibreOfficeServerProcess,
     val desktopInstance: XComponent,
     var status: Status
 )
