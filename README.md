@@ -64,8 +64,8 @@ docker run \
 ```
 
 Some details:
-- `pool.size`: In case you need more workers. Read more in the [performance](#performance) section.
-- `/usr/share/fonts/custom`: In case you need custom fonts. Read more in the [fonts](#fonts) section.
+- `pool.size`: In case you need more workers. Omit if not needed. .Read more in the [performance](#performance) section.
+- `/usr/share/fonts/custom`: In case you need custom fonts. Omit if not needed. Read more in the [fonts](#fonts) section.
 
 ## Locally
 
@@ -150,7 +150,9 @@ fetch("http://localhost:8080/pdf", requestOptions)
 # Fonts
 It will happen that you use a font in the docx document that is not included within your system. In that case, the said
 font will need to be included either by:
-- Saving the document with the fonts embedded. Read more
+- Saving the document with the fonts embedded. 
+  - [How to do so in LibreOffice](https://help.libreoffice.org/latest/lo/text/shared/01/prop_font_embed.html)
+  - [How to do so in Microsoft Office](https://support.microsoft.com/en-gb/topic/how-to-embed-a-truetype-font-in-a-document-883f5212-0c1a-28df-8bb1-21273fa67e7e)
 - Storing the font in your system. You can do so by copying your fonts to anywhere within your `/usr/share/fonts/`
 directory. Example
   ```shell
