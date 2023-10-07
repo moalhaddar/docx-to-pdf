@@ -4,28 +4,22 @@ import dev.alhaddar.docxtopdf.logger
 import dev.alhaddar.docxtopdf.server.LibreOfficeServerProcess
 import kotlinx.coroutines.*
 import org.springframework.beans.factory.annotation.Value
-import org.springframework.http.HttpStatus
 import org.springframework.scheduling.annotation.EnableScheduling
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Component
-import org.springframework.web.server.ResponseStatusException
-import java.util.concurrent.locks.ReentrantLock
-import kotlin.concurrent.withLock
 
 @Component
 @EnableScheduling
-class LibreOfficeServerPool(
+class LibreOfficeProcessPool(
     @Value("\${pool.size:1}")
     val size: Int
 ) {
     private val logger = logger()
-    val processDescriptorsPool: ArrayList<ProcessDescriptor> = ArrayList(size)
+    val processDescriptors: ArrayList<ProcessDescriptor> = ArrayList(size)
 
-    private val lock = ReentrantLock()
-    private val availableCondition = lock.newCondition()
 
     init {
-        fillPoolWithDeadProcesses()
+        fillWithDeadProcesses()
         attachProcessLifeCycleListeners()
         reviveFromTheDead()
     }
@@ -33,7 +27,7 @@ class LibreOfficeServerPool(
     fun reviveFromTheDead() {
         val deferredList = mutableListOf<Deferred<Any>>()
         runBlocking {
-            processDescriptorsPool
+            processDescriptors
                 .filter {it.status == ProcessStatus.DEAD }
                 .forEach {
                     val deferred = async(Dispatchers.IO) {
@@ -47,13 +41,13 @@ class LibreOfficeServerPool(
 
     @Scheduled(fixedDelay = 1000)
     fun healthCheck() {
-        val alive = processDescriptorsPool.filter { it.status != ProcessStatus.DEAD }
-        logger.info("[LibreOfficeServerPool] Current pool size is ${alive.size}/$size")
+        val alive = processDescriptors.filter { it.status != ProcessStatus.DEAD }
+        logger.info("[LibreOfficeProcessPool] Current pool size is ${alive.size}/$size")
         reviveFromTheDead()
     }
 
     fun attachProcessLifeCycleListeners() {
-        processDescriptorsPool.forEach { pd ->
+        processDescriptors.forEach { pd ->
             run {
                 pd.process.onStart = {
                     pd.status = ProcessStatus.AVAILABLE
@@ -65,7 +59,7 @@ class LibreOfficeServerPool(
         }
     }
 
-    fun fillPoolWithDeadProcesses() {
+    fun fillWithDeadProcesses() {
         val deferredList = mutableListOf<Deferred<Any>>()
 
         repeat(size) {
@@ -73,7 +67,7 @@ class LibreOfficeServerPool(
                 "127.0.0.1",
                 2000 + it,
             )
-            processDescriptorsPool.add(
+            processDescriptors.add(
                 ProcessDescriptor(
                     process,
                     ProcessStatus.DEAD
@@ -81,36 +75,11 @@ class LibreOfficeServerPool(
             )
         }
     }
-
-    fun borrow(): ProcessDescriptor {
-        lock.withLock {
-            if (processDescriptorsPool.size == 0) {
-                logger().error("[Pool] No enough workers available.")
-                throw ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR)
-            }
-
-            var pd = processDescriptorsPool.firstOrNull { it.status == ProcessStatus.AVAILABLE }
-            while (pd == null) {
-                availableCondition.await() // Wait until a pair becomes available
-                pd = processDescriptorsPool.firstOrNull { it.status == ProcessStatus.AVAILABLE }
-            }
-            pd.status = ProcessStatus.BLOCKED
-            return pd
-        }
-    }
-
-    fun giveBack(pd: ProcessDescriptor) {
-        lock.withLock {
-            val pd = processDescriptorsPool.first() { it == pd }
-            pd.status = ProcessStatus.AVAILABLE
-            availableCondition.signal()
-        }
-    }
 }
 
 
 enum class ProcessStatus {
-    DEAD, AVAILABLE, BLOCKED
+    DEAD, AVAILABLE
 }
 
 data class ProcessDescriptor(

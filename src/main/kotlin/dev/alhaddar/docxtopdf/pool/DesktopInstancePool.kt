@@ -23,9 +23,9 @@ import kotlin.concurrent.withLock
  */
 @Component
 class DesktopInstancePool(
-    val serverPool: LibreOfficeServerPool
+    val processPool: LibreOfficeProcessPool
 ) {
-    private val desktopDescriptorsPool: ArrayList<DesktopDescriptor> = ArrayList(serverPool.size)
+    private val desktopDescriptorsPool: ArrayList<DesktopDescriptor> = ArrayList(processPool.size)
 
     private val lock = ReentrantLock()
     private val availableCondition = lock.newCondition()
@@ -38,10 +38,9 @@ class DesktopInstancePool(
         val deferredList = mutableListOf<Deferred<Any>>()
 
         runBlocking {
-            repeat(serverPool.size) {
-                val pd = serverPool.borrow()
+            processPool.processDescriptors.forEach {
                 val deferred = async(Dispatchers.IO) {
-                    val context = getUnoRemoteContext(pd.process.host, pd.process.port.toString())
+                    val context = getUnoRemoteContext(it.process.host, it.process.port.toString())
                     val desktopInstance = getDesktopInstanceForContext(context)
                     lock.withLock {
                         desktopDescriptorsPool.add(
