@@ -6,12 +6,19 @@ import com.sun.star.comp.helper.Bootstrap
 import com.sun.star.lang.XComponent
 import com.sun.star.uno.UnoRuntime
 import com.sun.star.uno.XComponentContext
+import dev.alhaddar.docxtopdf.logger
 import dev.alhaddar.docxtopdf.server.LibreOfficeServer
 import kotlinx.coroutines.*
 import org.springframework.beans.factory.annotation.Value
+import org.springframework.http.HttpStatus
+import org.springframework.scheduling.annotation.EnableScheduling
+import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Component
+import org.springframework.web.server.ResponseStatusException
 import java.util.concurrent.BlockingQueue
 import java.util.concurrent.LinkedBlockingQueue
+import java.util.concurrent.locks.ReentrantLock
+import kotlin.concurrent.withLock
 
 
 /***
@@ -21,36 +28,85 @@ import java.util.concurrent.LinkedBlockingQueue
     Read: https://wiki.openoffice.org/wiki/Effort/Revise_OOo_Multi-Threading
  */
 @Component
+@EnableScheduling
 class DesktopInstancePool(
     @Value("\${pool.size:1}")
     val size: Int
 ) {
-    private val instancePool: BlockingQueue<XComponent> = LinkedBlockingQueue(size)
+    private val serverInstancePairs: ArrayList<ServerInstancePair> = ArrayList(size)
+    private val availablePorts: BlockingQueue<Int> = LinkedBlockingQueue((5000 until 5000 + size).toList())
+
+    private val lock = ReentrantLock()
+    private val availableCondition = lock.newCondition()
 
     init {
-        val deferredList = mutableListOf<Deferred<Unit>>()
+        fillPool()
+    }
+
+    fun fillPool() {
+        val deferredList = mutableListOf<Deferred<Any>>()
 
         runBlocking {
-            repeat(size) {
-                val deferred = async(Dispatchers.Default) {
-                    val server = LibreOfficeServer("127.0.0.1", 2000 + it, it)
-                    val context = getUnoRemoteContext(server.host, server.port.toString())
-                    val instance = getDesktopInstanceForContext(context)
-                    instancePool.put(instance)
+            repeat(size - serverInstancePairs.size) {
+                val deferred = async(Dispatchers.IO) {
+                    initServerInstancePair()
                 }
                 deferredList.add(deferred)
             }
-
             deferredList.awaitAll()
         }
     }
 
+    fun initServerInstancePair() {
+        val port = availablePorts.take()
+        val server = LibreOfficeServer(
+            host = "127.0.0.1",
+            port,
+            onExit = {
+                availablePorts.put(it.port)
+                lock.withLock {
+                    serverInstancePairs.removeIf() {pair -> pair.server == it }
+                }
+            }
+        )
+
+        val context = getUnoRemoteContext(server.host, server.port.toString())
+        val instance = getDesktopInstanceForContext(context)
+        lock.withLock {
+            serverInstancePairs.add(
+                ServerInstancePair(server,instance, Status.AVAILABLE)
+            )
+        }
+    }
+
+    @Scheduled(fixedDelay = 1000)
+    fun poolHealthCheck() {
+        logger().debug("[Health Check] Current pool size is ${serverInstancePairs.size}/$size")
+        fillPool()
+    }
+
     fun borrow(): XComponent {
-        return instancePool.take()
+        lock.withLock {
+            if (serverInstancePairs.size == 0) {
+                logger().error("[Pool] No enough workers available.")
+                throw ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR)
+            }
+            var pair: ServerInstancePair? = serverInstancePairs.firstOrNull { it.status == Status.AVAILABLE }
+            while (pair == null) {
+                availableCondition.await() // Wait until a pair becomes available
+                pair = serverInstancePairs.firstOrNull { it.status == Status.AVAILABLE }
+            }
+            pair.status = Status.BLOCKED
+            return pair.desktopInstance
+        }
     }
 
     fun giveBack(instance: XComponent) {
-        instancePool.put(instance)
+        lock.withLock {
+            val pair = serverInstancePairs.first() { it.desktopInstance == instance }
+            pair.status = Status.AVAILABLE
+            availableCondition.signal()
+        }
     }
 
     private fun getUnoRemoteContext(host: String, port: String): XComponentContext {
@@ -85,3 +141,13 @@ class DesktopInstancePool(
         return UnoRuntime.queryInterface(XComponent::class.java, xDesktopInstance)
     }
 }
+
+enum class Status {
+    AVAILABLE, BLOCKED
+}
+
+data class ServerInstancePair(
+    val server: LibreOfficeServer,
+    val desktopInstance: XComponent,
+    var status: Status
+)

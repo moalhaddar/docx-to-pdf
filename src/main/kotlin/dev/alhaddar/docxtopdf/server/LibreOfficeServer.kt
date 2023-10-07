@@ -7,7 +7,9 @@ import kotlinx.coroutines.launch
 import org.springframework.boot.actuate.health.Health
 import org.springframework.boot.actuate.health.HealthIndicator
 import org.springframework.context.annotation.Bean
+import org.springframework.http.HttpStatus
 import org.springframework.util.FileSystemUtils
+import org.springframework.web.server.ResponseStatusException
 import java.io.IOException
 import java.net.InetSocketAddress
 import java.net.Socket
@@ -16,18 +18,13 @@ import kotlin.io.path.createTempDirectory
 
 
 @OptIn(DelicateCoroutinesApi::class)
-class LibreOfficeServer(val host: String, val port: Int, instanceNumber: Int) {
+class LibreOfficeServer(val host: String, val port: Int, onExit: (server: LibreOfficeServer) -> Unit) {
     private val logger = logger()
-    private val logPrefix = "[LibreOffice/$instanceNumber]"
+    private val logPrefix = "[LibreOffice/$port]"
     private val libreOfficeUserProfilePath: Path = createTempDirectory(prefix = "docx-to-pdf-profile-")
     private val process: Process
 
     init {
-        logger.info("$logPrefix Starting server instance..")
-        logger.debug("$logPrefix Profile path: $libreOfficeUserProfilePath")
-        logger.debug("$logPrefix Host: $host")
-        logger.debug("$logPrefix Port: $port")
-
         val process = ProcessBuilder(
             "libreoffice",
             "--headless",
@@ -42,6 +39,11 @@ class LibreOfficeServer(val host: String, val port: Int, instanceNumber: Int) {
         )
             .redirectOutput(ProcessBuilder.Redirect.PIPE)
             .start()
+
+        logger.info("$logPrefix Starting server instance. PID: ${process.pid()}")
+        logger.debug("$logPrefix Profile path: $libreOfficeUserProfilePath")
+        logger.debug("$logPrefix Host: $host")
+        logger.debug("$logPrefix Port: $port")
 
 
         GlobalScope.launch {
@@ -60,7 +62,9 @@ class LibreOfficeServer(val host: String, val port: Int, instanceNumber: Int) {
             logger.debug("$logPrefix Deleting profile: $libreOfficeUserProfilePath")
             FileSystemUtils.deleteRecursively(libreOfficeUserProfilePath)
             logger.info("$logPrefix Process exited with status: ${it.exitValue()}")
+            onExit(this)
         }
+
 
         val startTime = System.currentTimeMillis()
         val timeout = 10 * 1000
