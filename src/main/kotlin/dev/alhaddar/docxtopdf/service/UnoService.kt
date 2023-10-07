@@ -8,7 +8,7 @@ import com.sun.star.lang.XComponent
 import com.sun.star.lib.uno.adapter.OutputStreamToXOutputStreamAdapter
 import com.sun.star.uno.UnoRuntime
 import dev.alhaddar.docxtopdf.logger
-import dev.alhaddar.docxtopdf.pool.DesktopInstancePool
+import dev.alhaddar.docxtopdf.proxy.RequestScopedDesktopInstance
 import org.springframework.stereotype.Service
 import java.io.ByteArrayOutputStream
 import java.io.InputStream
@@ -18,16 +18,15 @@ import kotlin.io.path.outputStream
 
 @Service
 class UnoService(
-    val pool: DesktopInstancePool
+    val requestScopedDesktopInstance: RequestScopedDesktopInstance
 ) {
     val logger = logger()
 
     fun convert(inputStream: InputStream): ByteArray {
-        val desktopInstance = pool.borrow()
+        val desktopInstance = requestScopedDesktopInstance.desktopInstance
         val document = loadDocumentIntoDesktopInstance(desktopInstance, inputStream)
         val outputStream = saveDocument(document)
         document.dispose() // Needed to avoid memory leak.
-        pool.giveBack(desktopInstance)
         return outputStream.toByteArray()
     }
 

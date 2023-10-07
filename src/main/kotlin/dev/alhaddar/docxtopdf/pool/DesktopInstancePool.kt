@@ -55,7 +55,7 @@ class DesktopInstancePool(
         }
     }
 
-    fun borrow(): XComponent {
+    fun borrow(): DesktopDescriptor {
         lock.withLock {
             if (desktopDescriptorsPool.size == 0) {
                 logger().error("[Pool] No enough workers available.")
@@ -67,13 +67,13 @@ class DesktopInstancePool(
                 dd = desktopDescriptorsPool.firstOrNull { it.status == DesktopStatus.AVAILABLE }
             }
             dd.status = DesktopStatus.BLOCKED
-            return dd.desktopInstance
+            return dd
         }
     }
 
-    fun giveBack(instance: XComponent) {
+    fun giveBack(dd: DesktopDescriptor) {
         lock.withLock {
-            val pair = desktopDescriptorsPool.first() { it.desktopInstance == instance }
+            val pair = desktopDescriptorsPool.first() { it == dd }
             pair.status = DesktopStatus.AVAILABLE
             availableCondition.signal()
         }
