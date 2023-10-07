@@ -49,7 +49,23 @@ And then streaming the response back to the user.
 
 # Installation Guide
 ## Using docker
-TODO
+You can pull the latest built docker image from Dockerhub:
+```shell
+docker pull moalhaddar/docx-to-pdf:2.0.0
+```
+
+Then you can run the service:
+```shell
+docker run \
+ -p 8080:8080  \
+ -e "pool.size=1" \
+ -v ./fonts:/usr/share/fonts/custom \
+  moalhaddar/docx-to-pdf:2.0.0
+```
+
+Some details:
+- `pool.size`: In case you need more workers. Read more in the [performance](#performance) section.
+- `/usr/share/fonts/custom`: In case you need custom fonts. Read more in the [fonts](#fonts) section.
 
 ## Locally
 
@@ -130,6 +146,21 @@ fetch("http://localhost:8080/pdf", requestOptions)
 
 ### Example 4: A table
 ![image](./examples/ex4/example.png)
+
+# Fonts
+It will happen that you use a font in the docx document that is not included within your system. In that case, the said
+font will need to be included either by:
+- Saving the document with the fonts embedded. Read more
+- Storing the font in your system. You can do so by copying your fonts to anywhere within your `/usr/share/fonts/`
+directory. Example
+  ```shell
+  $ cp ./fonts/DroidKufi-Bold.ttf /usr/share/fonts/
+  ```
+  
+Then you will need to restart the service.
+
+If the font is not included within the system/docker image, then the result PDFs will not look the same as the original
+docx file.
 
 # Performance
 This tool was designed with performance in mind. 
