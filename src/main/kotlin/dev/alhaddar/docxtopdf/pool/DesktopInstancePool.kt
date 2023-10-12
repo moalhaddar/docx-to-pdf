@@ -67,7 +67,7 @@ class DesktopInstancePool(
         val xPropertySet = UnoRuntime.queryInterface(
             XPropertySet::class.java,
             xUnoUrlResolver.resolve(
-                "uno:socket,host=${host},port=${port};urp;StarOffice.ServiceManager"
+                "uno:socket,host=${host},port=${port},tcpNoDelay=1;urp;StarOffice.ServiceManager"
             )
         ) as XPropertySet
 
