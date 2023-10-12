@@ -23,7 +23,7 @@ fi
 echo -e "${YELLOW}Watching and converting $input_path${NC}"
 
 while true; do 
-    while inotifywait -qq -e close "$input_path"; do
+    while inotifywait -qq -e close_write "$input_path"; do
         curl -s \
         --location 'http://localhost:8080/pdf' \
         --form 'document=@'"$input_path"'' \
