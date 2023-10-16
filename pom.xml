@@ -79,6 +79,16 @@
 			<artifactId>spring-boot-starter-test</artifactId>
 			<scope>test</scope>
 		</dependency>
+		<dependency>
+			<groupId>com.deepoove</groupId>
+			<artifactId>poi-tl</artifactId>
+			<version>1.12.2-SNAPSHOT</version>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.poi</groupId>
+			<artifactId>poi</artifactId>
+			<version>5.2.5-SNAPSHOT</version>
+		</dependency>
 	</dependencies>
 
 	<build>
