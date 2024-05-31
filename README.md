@@ -172,7 +172,9 @@ need to increase the worker pool size, you can do so by providing the environmen
 
 Or you can do so by uncommenting the `pool.size` line in the [properties](./src/main/resources/application.properties) file.
 
-I've stress tested this service with concurrent requests with a very simple 1-page docx file, here are the details:
+The test is done through a web browser and javascript, checkout [index.html](./scripts/index.html) & [stress.js](./scripts/stress.js) respectively.
+
+I've stress tested this service with concurrent requests with a very simple 1-page docx file (example 1), here are the results:
 
 | Number Of Concurrent Requests | Number Of Workers | Time to serve all requests |
 |-------------------------------|-------------------|----------------------------|
@@ -182,6 +184,7 @@ I've stress tested this service with concurrent requests with a very simple 1-pa
 | 50                            | 16                | 1.081s                     |
 
 Keep in mind that the input file complexity matters a lot when it comes to the conversion performance.
+
 
 If you have any performance observations, don't hesitate to open and report an issue.
 

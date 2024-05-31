@@ -1,0 +1,12 @@
+<html>
+	<script src="./stress.js"></script>
+	<body>
+		<div style="display: flex; flex-direction: column; gap: 10px; max-width: 400px">
+		Select a file, set the parameters and click start.
+		<input type="file" name="Stress File" style="background-color: lightblue;" />
+		<input type="text" name="concurrent requests no" placeholder="Concurrent Requests No."/>
+		<button name="start" onclick="start();">Send Requests</button>
+		<div name="results"></div>
+		</div>
+	</body>
+</html>
