@@ -62,10 +62,11 @@ docker pull moalhaddar/docx-to-pdf:2.1.0
 Then you can run the service:
 ```shell
 docker run \
+ -rm --name docx-to-pdf \
  -p 8080:8080  \
  -e "pool.size=1" \
  -v ./fonts:/usr/share/fonts/custom \
-  moalhaddar/docx-to-pdf:2.0.0
+  moalhaddar/docx-to-pdf:2.1.0
 ```
 
 Some details:
