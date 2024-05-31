@@ -51,6 +51,11 @@ class DesktopInstancePool(
         return instancePool.take()
     }
 
+    /**
+     * In the current design, if the conversion fails then the
+     * instance will never be given back, a broken instance will not try
+     * to reload itself.
+     */
     fun giveBack(instance: XComponent) {
         instancePool.put(instance)
     }
