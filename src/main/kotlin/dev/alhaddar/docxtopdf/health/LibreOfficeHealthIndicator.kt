@@ -10,12 +10,19 @@ class LibreOfficeHealthIndicator(val desktopInstancePool: DesktopInstancePool): 
 
     override fun health(): Health {
         val h = Health.Builder()
+        var isAnyProcessDead = false
         desktopInstancePool.servers.stream().forEach {
             if (it.process.isAlive) {
-                h.up().withDetail("message", "${it.logPrefix} server is running")
+                h.withDetail("message", "${it.logPrefix} server is running")
             } else {
-                h.down().withDetail("message", "${it.logPrefix} server is not running")
+                isAnyProcessDead = true
+                h.withDetail("message", "${it.logPrefix} server is not running")
             }
+        }
+        if (isAnyProcessDead) {
+            h.down()
+        } else {
+            h.up()
         }
         return h.build()
     }

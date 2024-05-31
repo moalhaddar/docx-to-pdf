@@ -39,7 +39,7 @@ class LibreOfficeServer(val host: String, val port: Int, instanceNumber: Int)  {
         )
             .redirectOutput(ProcessBuilder.Redirect.PIPE)
             .start()
-
+        logger.info("$logPrefix PID: ${process.pid()}")
 
         GlobalScope.launch {
             process.inputStream.bufferedReader().use { reader ->
