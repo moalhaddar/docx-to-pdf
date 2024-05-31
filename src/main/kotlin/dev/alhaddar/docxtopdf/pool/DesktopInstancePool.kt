@@ -26,6 +26,7 @@ class DesktopInstancePool(
     val size: Int
 ) {
     private val instancePool: BlockingQueue<XComponent> = LinkedBlockingQueue(size)
+    val servers: ArrayList<LibreOfficeServer> = ArrayList(size)
 
     init {
         val deferredList = mutableListOf<Deferred<Unit>>()
@@ -34,6 +35,7 @@ class DesktopInstancePool(
             repeat(size) {
                 val deferred = async(Dispatchers.Default) {
                     val server = LibreOfficeServer("127.0.0.1", 2000 + it, it)
+                    servers.add(server)
                     val context = getUnoRemoteContext(server.host, server.port.toString())
                     val instance = getDesktopInstanceForContext(context)
                     instancePool.put(instance)

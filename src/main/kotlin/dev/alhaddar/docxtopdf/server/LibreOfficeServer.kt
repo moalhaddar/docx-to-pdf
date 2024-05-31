@@ -4,9 +4,6 @@ import dev.alhaddar.docxtopdf.logger
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
-import org.springframework.boot.actuate.health.Health
-import org.springframework.boot.actuate.health.HealthIndicator
-import org.springframework.context.annotation.Bean
 import org.springframework.util.FileSystemUtils
 import java.io.IOException
 import java.net.InetSocketAddress
@@ -16,11 +13,11 @@ import kotlin.io.path.createTempDirectory
 
 
 @OptIn(DelicateCoroutinesApi::class)
-class LibreOfficeServer(val host: String, val port: Int, instanceNumber: Int) {
+class LibreOfficeServer(val host: String, val port: Int, instanceNumber: Int)  {
     private val logger = logger()
-    private val logPrefix = "[LibreOffice/$instanceNumber]"
     private val libreOfficeUserProfilePath: Path = createTempDirectory(prefix = "docx-to-pdf-profile-")
-    private val process: Process
+    val logPrefix = "[LibreOffice/$instanceNumber]"
+    val process: Process
 
     init {
         logger.info("$logPrefix Starting server instance..")
@@ -88,16 +85,5 @@ class LibreOfficeServer(val host: String, val port: Int, instanceNumber: Int) {
         }
 
         this.process = process
-    }
-
-    @Bean
-    fun libreOfficeServerHealthIndicator(): HealthIndicator {
-        return HealthIndicator {
-            if (process.isAlive) {
-                Health.up().withDetail("message", "LibreOffice server is running").build()
-            } else {
-                Health.down().withDetail("message", "LibreOffice server is not running").build()
-            }
-        }
     }
 }
