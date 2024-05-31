@@ -1,5 +1,10 @@
 # Docx To PDF
 
+> [!IMPORTANT]  
+> As of 31st May, 2024, the service has been rewritten using kotlin and spring boot.
+>
+> If you wish to use or look at the old source code, you can do so by checking out the `nodejs` branch.
+
 ## Overview
 This tool transforms Microsoft Word Documents (DOCX) into PDF format.
 
@@ -51,7 +56,7 @@ And then streaming the response back to the user.
 ## Using docker
 You can pull the latest built docker image from Dockerhub:
 ```shell
-docker pull moalhaddar/docx-to-pdf:2.0.0
+docker pull moalhaddar/docx-to-pdf:2.1.0
 ```
 
 Then you can run the service:
