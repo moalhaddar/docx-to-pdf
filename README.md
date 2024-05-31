@@ -1,6 +1,11 @@
 # Docx to PDF converter
 The problem: too many tools to convert from docx to PDF, but usually they end up messing something up in the formating, handling RTL text, handling different fonts and so on. This library is built right on top of LibreOffice, and provides an HTTP API that allows uploading a *.docx file and respondes with the *.pdf file back.
 
+# Update 31st May, 2024
+There are plans to migrate this service to be using kotlin instead to utilize the UNO APIs
+such that we can avoid spawning lots of libreoffice processes in the background which allows faster conversion times.
+
+You can find the source code over the [kotlin](https://github.com/moalhaddar/docx-to-pdf/tree/kotlin) branch..
 
 # Usage
 You will need docker and docker compose to run this tool.
@@ -9,6 +14,8 @@ You will need docker and docker compose to run this tool.
 # In the root of this repositry after cloning
 $ docker-compose up -d --build
 ```
+
+You can grab pre-built images from docker-hub, available [here](https://hub.docker.com/r/moalhaddar/docx-to-pdf/tags)
 
 After building the image and upping the container, you can inspect the logs by running
 ```sh
@@ -51,7 +58,6 @@ Most probably the font you are using is not included within the build, you will 
 - Some shapes are not in their place, why is this happening?
 
 Sadly, this is an artifact from LibreOffice, you might want to make your shapes to be inline (following text) and not floating around as a workaround.
-
 
 # License
 MIT License
