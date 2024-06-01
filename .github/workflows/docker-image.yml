@@ -29,5 +29,5 @@ jobs:
             --tag moalhaddar/docx-to-pdf:2.1.0-${{github.run_attempt}}
         
         docker push moalhaddar/docx-to-pdf:latest
-        docker push moalhaddar/docx-to-pdf:moalhaddar/docx-to-pdf:2.1.0-${{github.run_number}}
+        docker push moalhaddar/docx-to-pdf:2.1.0-${{github.run_number}}
       
