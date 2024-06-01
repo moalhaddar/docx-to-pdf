@@ -7,6 +7,7 @@ import com.sun.star.lang.XComponent
 import com.sun.star.uno.UnoRuntime
 import com.sun.star.uno.XComponentContext
 import dev.alhaddar.docxtopdf.server.LibreOfficeServer
+import dev.alhaddar.docxtopdf.types.DesktopInstanceWrapper
 import kotlinx.coroutines.*
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Component
@@ -25,7 +26,7 @@ class DesktopInstancePool(
     @Value("\${pool.size:1}")
     val size: Int
 ) {
-    private val instancePool: BlockingQueue<XComponent> = LinkedBlockingQueue(size)
+    private val desktopInstanceWrappers: BlockingQueue<DesktopInstanceWrapper> = LinkedBlockingQueue(size)
     val servers: ArrayList<LibreOfficeServer> = ArrayList(size)
 
     init {
@@ -34,11 +35,7 @@ class DesktopInstancePool(
         runBlocking {
             repeat(size) {
                 val deferred = async(Dispatchers.Default) {
-                    val server = LibreOfficeServer("127.0.0.1", 2000 + it, it)
-                    servers.add(server)
-                    val context = getUnoRemoteContext(server.host, server.port.toString())
-                    val instance = getDesktopInstanceForContext(context)
-                    instancePool.put(instance)
+                    construct(it)
                 }
                 deferredList.add(deferred)
             }
@@ -47,17 +44,31 @@ class DesktopInstancePool(
         }
     }
 
-    fun borrow(): XComponent {
-        return instancePool.take()
+    fun construct(serverId: Int) {
+        val server = LibreOfficeServer("127.0.0.1", 2000 + serverId, serverId)
+        servers.add(server)
+        val instance = getDesktopInstanceForServer(server)
+        desktopInstanceWrappers.put(instance)
     }
 
     /**
-     * In the current design, if the conversion fails then the
-     * instance will never be given back, a broken instance will not try
-     * to reload itself.
+     * Destructs a server and it's instance.
+     * This causes zombie processes for now...
      */
-    fun giveBack(instance: XComponent) {
-        instancePool.put(instance)
+    fun destruct(serverId: Int) {
+        servers.removeAt(serverId)
+        desktopInstanceWrappers.removeIf {
+            it.serverId == serverId
+        }
+    }
+
+    fun borrow(): DesktopInstanceWrapper {
+        return desktopInstanceWrappers.take()
+    }
+
+
+    fun giveBack(instance: DesktopInstanceWrapper) {
+        desktopInstanceWrappers.put(instance)
     }
 
     private fun getUnoRemoteContext(host: String, port: String): XComponentContext {
@@ -85,10 +96,15 @@ class DesktopInstancePool(
         ) as XComponentContext
     }
 
-    private fun getDesktopInstanceForContext(context: XComponentContext): XComponent {
-        val xDesktopInstance = context.serviceManager.createInstanceWithContext(
-            "com.sun.star.frame.Desktop", context
+    private fun getDesktopInstanceForServer(server: LibreOfficeServer): DesktopInstanceWrapper {
+        val context = getUnoRemoteContext(server.host, server.port.toString())
+        val xDesktopInstance = UnoRuntime.queryInterface(
+            XComponent::class.java,
+            context.serviceManager.createInstanceWithContext(
+                "com.sun.star.frame.Desktop", context
+            )
         )
-        return UnoRuntime.queryInterface(XComponent::class.java, xDesktopInstance)
+
+        return DesktopInstanceWrapper(xDesktopInstance, server.id)
     }
 }

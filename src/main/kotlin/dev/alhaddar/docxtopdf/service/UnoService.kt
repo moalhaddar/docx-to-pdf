@@ -27,21 +27,29 @@ class UnoService(
 ) {
     val logger = logger()
 
-    fun convert(inputStream: InputStream): ByteArray {
-        val desktopInstance = pool.borrow()
+    fun convert(inputStream: InputStream, isRetry: Boolean): ByteArray {
+        val desktopInstanceWrapper = pool.borrow()
         try {
-            val document = loadDocumentIntoDesktopInstance(desktopInstance, inputStream)
+            val document = loadDocumentIntoDesktopInstance(desktopInstanceWrapper.instance, inputStream)
             val outputStream = saveDocument(document)
             document.dispose() // Needed to avoid memory leak.
+            pool.giveBack(desktopInstanceWrapper)
             return outputStream.toByteArray()
         } catch (e: DocumentNotLoadedNullException) {
-            pool.giveBack(desktopInstance)
+            pool.giveBack(desktopInstanceWrapper)
             throw e
         } catch (e: LibreOfficeDeadProcessException) {
-            throw e
+            pool.giveBack(desktopInstanceWrapper)
+            pool.destruct(desktopInstanceWrapper.serverId)
+            pool.construct(desktopInstanceWrapper.serverId)
+            if (!isRetry) {
+                return convert(inputStream, true)
+            } else {
+                throw e
+            }
         } catch (e: Exception) {
             logger.error("Unknown exception was caught.")
-            pool.giveBack(desktopInstance)
+            pool.giveBack(desktopInstanceWrapper)
             throw e
         }
 
@@ -72,7 +80,7 @@ class UnoService(
      * Read: https://libreoffice.freedesktop.narkive.com/2sujB3BI/loader-loadcomponentfromurl-works-slow-when-we-are-restoring-calc-sheet-from-byte-array-loader
      */
     @Throws(DocumentNotLoadedNullException::class, LibreOfficeDeadProcessException::class)
-    private fun loadDocumentIntoDesktopInstance(desktop: Any, inputStream: InputStream): XComponent {
+    private fun loadDocumentIntoDesktopInstance(desktop: XComponent, inputStream: InputStream): XComponent {
         val xLoader = try {
             UnoRuntime.queryInterface(XComponentLoader::class.java, desktop)
         } catch (e: DisposedException) {

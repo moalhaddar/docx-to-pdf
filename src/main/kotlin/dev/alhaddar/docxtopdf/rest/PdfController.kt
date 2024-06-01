@@ -20,7 +20,7 @@ class PdfController(val unoService: UnoService) {
     fun getPdf(@RequestParam("document") file: MultipartFile): ResponseEntity<ByteArray>{
         logger.info("PDF Request. Docx file size: ${file.inputStream.readBytes().size} bytes.")
 
-        val pdf = unoService.convert(file.inputStream)
+        val pdf = unoService.convert(file.inputStream, false)
 
         logger.info("Successfully generated PDF. File Size: ${pdf.size} bytes.")
 

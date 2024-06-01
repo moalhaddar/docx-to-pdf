@@ -13,10 +13,10 @@ import kotlin.io.path.createTempDirectory
 
 
 @OptIn(DelicateCoroutinesApi::class)
-class LibreOfficeServer(val host: String, val port: Int, instanceNumber: Int)  {
+class LibreOfficeServer(val host: String, val port: Int, val id: Int)  {
     private val logger = logger()
     private val libreOfficeUserProfilePath: Path = createTempDirectory(prefix = "docx-to-pdf-profile-")
-    val logPrefix = "[LibreOffice/$instanceNumber]"
+    val logPrefix = "[LibreOffice/$id]"
     val process: Process
 
     init {
