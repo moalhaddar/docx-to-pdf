@@ -4,6 +4,7 @@ async function start() {
 	const file = document.querySelector("input[type=file]");
 	const start_button = document.querySelector("button[name=start]");
 	const results = document.querySelector("div[name=results]");
+	const viewer = document.querySelector("iframe[name=viewer]");
 
 	var formdata = new FormData();
 	
@@ -28,14 +29,22 @@ async function start() {
 	const startTime = new Date();
 	let success = 0;
 	let fail = 0;
+	let dataBase64 = null;
 	for (let i = 0; i < parseInt(requests_no.value); i++) {
 		const p = fetch("http://localhost:8080/docx-to-pdf", {
 			method: 'POST',
 			body: formdata,
 			redirect: 'follow'
 			})
-			.then(response => success++)
-			.catch(error => fail++);
+			.then(async response => {
+				dataBase64 = await response.arrayBuffer();
+				if (response.status === 200) {
+					success++
+				} else {
+					throw new Error()
+				}
+			})
+			.catch(() => fail++);
 
 		promises.push(p)
 	}
@@ -44,8 +53,19 @@ async function start() {
 
 	const endTime = new Date();
 
+	let blob = new Blob([dataBase64], {type: 'application/pdf'});
+	let url = URL.createObjectURL(blob);
+
 	results.innerHTML = `Time: ~${endTime - startTime}ms, Success: ${success}, Failed: ${fail}`
+	viewer.src = url;
 
 	start_button.innerHTML = 'Start';
 	start_button.removeAttribute("disabled");
 }
+
+
+document.addEventListener("keypress", (e) => {
+	if (e.code === 'KeyR') {
+		start();
+	}
+})

@@ -1,12 +1,18 @@
-<html>
+<html style="height: 98%;">
 	<script src="./stress.js"></script>
-	<body>
-		<div style="display: flex; flex-direction: column; gap: 10px; max-width: 400px">
-		Select a file, set the parameters and click start.
-		<input type="file" name="Stress File" style="background-color: lightblue;" />
-		<input type="text" name="concurrent requests no" placeholder="Concurrent Requests No."/>
-		<button name="start" onclick="start();">Send Requests</button>
-		<div name="results"></div>
+	<body style="min-height: 100%;">
+		<div style="display: flex; flex-direction: row; gap: 10px; height: 100%;">
+			<div style="display: flex; flex-direction: column; gap: 10px; min-width: 50%; align-self: center; align-items: center;">
+				<div style="display: flex; flex-direction: column; gap: 10px; width: 50%;">
+					Select a file, set the parameters and click start.
+					<input type="file" name="Stress File" style="background-color: lightblue;" />
+					<input type="text" name="concurrent requests no" placeholder="Concurrent Requests No."/>
+					<button name="start" onclick="start();">Send Requests</button>
+					<div name="results"></div>
+				</div>
+				
+			</div>
+			<iframe width="100%" height="100%" name="viewer"></iframe>
 		</div>
 	</body>
 </html>
