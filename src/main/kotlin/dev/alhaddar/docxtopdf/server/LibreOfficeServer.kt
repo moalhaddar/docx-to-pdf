@@ -53,10 +53,12 @@ class LibreOfficeServer(val host: String, val port: Int, instanceNumber: Int)  {
             }
         }
 
-        process.onExit().thenAccept {
+        process.onExit().thenAccept { parent ->
+            logger.info("$logPrefix Process exited with status: ${parent.exitValue()}")
+            // There is a bug here where parent launches soffice.bin but it's not killed
+            // even if we iterate through all the child processes.
             logger.debug("$logPrefix Deleting profile: $libreOfficeUserProfilePath")
             FileSystemUtils.deleteRecursively(libreOfficeUserProfilePath)
-            logger.info("$logPrefix Process exited with status: ${it.exitValue()}")
         }
 
         val startTime = System.currentTimeMillis()
