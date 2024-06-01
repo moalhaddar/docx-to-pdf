@@ -26,7 +26,7 @@ jobs:
       run: |
         docker build . \
             --tag moalhaddar/docx-to-pdf:latest \
-            --tag moalhaddar/docx-to-pdf:2.1.0-${{github.run_attempt}}
+            --tag moalhaddar/docx-to-pdf:2.1.0-${{github.run_number}}
         
         docker push moalhaddar/docx-to-pdf:latest
         docker push moalhaddar/docx-to-pdf:2.1.0-${{github.run_number}}
