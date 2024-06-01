@@ -56,7 +56,7 @@ And then streaming the response back to the user.
 ## Using docker
 You can pull the latest built docker image from Dockerhub:
 ```shell
-docker pull moalhaddar/docx-to-pdf:2.1.0
+docker pull moalhaddar/docx-to-pdf:latest
 ```
 
 Then you can run the service:
@@ -66,7 +66,7 @@ docker run \
  -p 8080:8080  \
  -e "pool.size=1" \
  -v ./fonts:/usr/share/fonts/custom \
-  moalhaddar/docx-to-pdf:2.1.0
+  moalhaddar/docx-to-pdf:latest
 ```
 
 Some details:

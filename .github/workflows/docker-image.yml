@@ -3,6 +3,8 @@ name: Docker Image CI
 on:
   workflow_dispatch:
   push:
+    paths:
+      - src/**
     branches: [ "master" ]
 
 jobs:
