@@ -117,7 +117,7 @@ Once the service is up and running, you can try hitting the service at the `/pdf
 
 ### Sample cURL:
 ```shell
-curl \ 
+curl --output output.pdf \
 --location 'http://localhost:8080/pdf' \
 --form 'document=@"/home/moalhaddar/example.docx"'
 ```
