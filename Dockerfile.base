@@ -35,10 +35,10 @@ ENV PATH=$JAVA_HOME/bin:$PATH
 
 # ---- Maven Stage ----
 FROM base_java AS base_java_maven
-ARG MAVEN_SOURCE="https://dlcdn.apache.org/maven/maven-3/3.9.5/binaries/apache-maven-3.9.5-bin.tar.gz"
+ARG MAVEN_SOURCE="https://dlcdn.apache.org/maven/maven-3/3.9.10/binaries/apache-maven-3.9.10-bin.tar.gz"
 ARG MAVEN_FILE_NAME=maven.tar.gz
 RUN wget -O $MAVEN_FILE_NAME $MAVEN_SOURCE
 RUN tar -xzvf $MAVEN_FILE_NAME -C /usr/local
 RUN rm $MAVEN_FILE_NAME
-ENV MAVEN_HOME=/usr/local/apache-maven-3.9.5
+ENV MAVEN_HOME=/usr/local/apache-maven-3.9.10
 ENV PATH=$MAVEN_HOME/bin:$PATH
