@@ -8,6 +8,7 @@ COPY ./src ./src
 RUN mvn package
 
 RUN cp ./target/*.jar ./app.jar
+RUN mvn clean
 COPY ./fonts/ /usr/share/fonts/custom
 RUN rm -rf ./src ./pom.xml
 EXPOSE 8080

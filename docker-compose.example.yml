@@ -1,0 +1,24 @@
+version: "3"
+services:
+  docxtopdf:
+    container_name: docxtopdf
+    build: .
+    ports:
+      - "127.0.0.1:8080:8080"
+    volumes:
+      - ./fonts:/usr/share/fonts/custom
+    environment:
+      pool.size: 2
+      spring.servlet.multipart.max-file-size: "20MB"
+      spring.servlet.multipart.max-request-size: "20MB"
+      server.tomcat.max-http-form-post-size: "20MB"
+      management.endpoint.health.probes.enabled: "true"
+      server.tomcat.connection-timeout: "30"
+
+      auth.provider: ""
+      auth.enable: "true"
+      auth.algo: "RS256"
+      auth.secret: ""
+      auth.publicKey: |-
+        -----BEGIN CERTIFICATE-----
+        -----END CERTIFICATE-----

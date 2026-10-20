@@ -1,0 +1,1 @@
+docker build -t docx-to-pdf:latest . --no-cache && mvn clean && docker run -p 8080:8080 docx-to-pdf:latest
