@@ -14,10 +14,11 @@ import dev.alhaddar.docxtopdf.logger
 import dev.alhaddar.docxtopdf.pool.DesktopInstancePool
 import org.springframework.stereotype.Service
 import java.io.ByteArrayOutputStream
+import java.io.IOException
 import java.io.InputStream
 import java.lang.Exception
 import java.nio.file.Path
-import kotlin.io.path.deleteExisting
+import kotlin.io.path.deleteIfExists
 import kotlin.io.path.outputStream
 import kotlin.jvm.Throws
 
@@ -28,31 +29,46 @@ class UnoService(
     val logger = logger()
 
     fun convert(inputStream: InputStream, isRetry: Boolean): ByteArray {
+        val tempFile = createTempFileFromInput(inputStream)
+        try {
+            return try {
+                convertOnce(tempFile)
+            } catch (e: LibreOfficeDeadProcessException) {
+                if (!isRetry) {
+                    convertOnce(tempFile)
+                } else {
+                    throw e
+                }
+            }
+        } finally {
+            tempFile.deleteIfExists()
+        }
+    }
+
+    private fun convertOnce(tempFile: Path): ByteArray {
         val desktopInstanceWrapper = pool.borrow()
         try {
-            val document = loadDocumentIntoDesktopInstance(desktopInstanceWrapper.instance, inputStream)
-            val outputStream = saveDocument(document)
-            document.dispose() // Needed to avoid memory leak.
-            pool.giveBack(desktopInstanceWrapper)
-            return outputStream.toByteArray()
+            val document = loadDocumentIntoDesktopInstance(desktopInstanceWrapper.instance, tempFile)
+            try {
+                return saveDocument(document).toByteArray()
+            } finally {
+                runCatching { document.dispose() } // Needed to avoid memory leak.
+            }
         } catch (e: DocumentNotLoadedNullException) {
-            pool.giveBack(desktopInstanceWrapper)
             throw e
         } catch (e: LibreOfficeDeadProcessException) {
-            pool.giveBack(desktopInstanceWrapper)
-            pool.destruct(desktopInstanceWrapper.serverId)
-            pool.construct(desktopInstanceWrapper.serverId)
-            if (!isRetry) {
-                return convert(inputStream, true)
-            } else {
-                throw e
-            }
-        } catch (e: Exception) {
-            logger.error("Unknown exception was caught.")
-            pool.giveBack(desktopInstanceWrapper)
+            pool.discard(desktopInstanceWrapper)
             throw e
+        } catch (e: Exception) {
+            if (e is DisposedException || e is IOException || !pool.isLive(desktopInstanceWrapper)) {
+                pool.discard(desktopInstanceWrapper)
+                throw LibreOfficeDeadProcessException()
+            }
+            logger.error("Unknown exception was caught.", e)
+            throw e
+        } finally {
+            pool.giveBack(desktopInstanceWrapper)
         }
-
     }
 
     private fun saveDocument(document: XComponent): ByteArrayOutputStream {
@@ -80,14 +96,13 @@ class UnoService(
      * Read: https://libreoffice.freedesktop.narkive.com/2sujB3BI/loader-loadcomponentfromurl-works-slow-when-we-are-restoring-calc-sheet-from-byte-array-loader
      */
     @Throws(DocumentNotLoadedNullException::class, LibreOfficeDeadProcessException::class)
-    private fun loadDocumentIntoDesktopInstance(desktop: XComponent, inputStream: InputStream): XComponent {
+    private fun loadDocumentIntoDesktopInstance(desktop: XComponent, tempFile: Path): XComponent {
         val xLoader = try {
             UnoRuntime.queryInterface(XComponentLoader::class.java, desktop)
         } catch (e: DisposedException) {
             throw LibreOfficeDeadProcessException()
         }
 
-        val tempFile = createTempFileFromInput(inputStream)
         val tempFilePath = tempFile.toUri().toString()
 
         val loadProps = listOf(
@@ -100,8 +115,6 @@ class UnoService(
         ) ?: throw DocumentNotLoadedNullException()
 
         logger.debug("[UNO] End loading input.")
-
-        tempFile.deleteExisting()
 
         return xDocument
     }
