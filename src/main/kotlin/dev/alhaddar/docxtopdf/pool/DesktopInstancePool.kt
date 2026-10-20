@@ -6,13 +6,19 @@ import com.sun.star.comp.helper.Bootstrap
 import com.sun.star.lang.XComponent
 import com.sun.star.uno.UnoRuntime
 import com.sun.star.uno.XComponentContext
+import dev.alhaddar.docxtopdf.logger
 import dev.alhaddar.docxtopdf.server.LibreOfficeServer
 import dev.alhaddar.docxtopdf.types.DesktopInstanceWrapper
+import jakarta.annotation.PreDestroy
 import kotlinx.coroutines.*
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Component
+import java.util.IdentityHashMap
 import java.util.concurrent.BlockingQueue
+import java.util.concurrent.CopyOnWriteArrayList
+import java.util.concurrent.Executors
 import java.util.concurrent.LinkedBlockingQueue
+import java.util.concurrent.RejectedExecutionException
 
 
 /***
@@ -26,49 +32,161 @@ class DesktopInstancePool(
     @Value("\${pool.size:1}")
     val size: Int
 ) {
-    private val desktopInstanceWrappers: BlockingQueue<DesktopInstanceWrapper> = LinkedBlockingQueue(size)
-    val servers: ArrayList<LibreOfficeServer> = ArrayList(size)
+    private val logger = logger()
+    private val lock = Any()
+    private val desktopInstanceWrappers: BlockingQueue<DesktopInstanceWrapper> = LinkedBlockingQueue()
+    private val liveWrappers: MutableMap<DesktopInstanceWrapper, LibreOfficeServer> = IdentityHashMap()
+    private val activeThreads: MutableMap<DesktopInstanceWrapper, Thread> = IdentityHashMap()
+    val servers: MutableList<LibreOfficeServer> = CopyOnWriteArrayList()
+
+    private val replenisher = Executors.newSingleThreadExecutor { r ->
+        Thread(r, "libreoffice-replenisher").apply { isDaemon = true }
+    }
+
+    @Volatile
+    private var closed = false
 
     init {
         val deferredList = mutableListOf<Deferred<Unit>>()
 
-        runBlocking {
-            repeat(size) {
-                val deferred = async(Dispatchers.Default) {
-                    construct(it)
+        try {
+            runBlocking {
+                repeat(size) {
+                    val deferred = async(Dispatchers.Default) {
+                        construct(it)
+                    }
+                    deferredList.add(deferred)
                 }
-                deferredList.add(deferred)
-            }
 
-            deferredList.awaitAll()
+                deferredList.awaitAll()
+            }
+        } catch (e: Exception) {
+            shutdown()
+            throw e
         }
     }
 
     fun construct(serverId: Int) {
         val server = LibreOfficeServer("127.0.0.1", 2000 + serverId, serverId)
-        servers.add(server)
-        val instance = getDesktopInstanceForServer(server)
-        desktopInstanceWrappers.put(instance)
-    }
+        val instance = try {
+            getDesktopInstanceForServer(server)
+        } catch (e: Exception) {
+            server.destroy()
+            throw e
+        }
 
-    /**
-     * Destructs a server and it's instance.
-     * This causes zombie processes for now...
-     */
-    fun destruct(serverId: Int) {
-        servers.removeAt(serverId)
-        desktopInstanceWrappers.removeIf {
-            it.serverId == serverId
+        synchronized(lock) {
+            if (closed) {
+                server.destroy()
+                return
+            }
+            val existingIndex = servers.indexOfFirst { it.id == serverId }
+            if (existingIndex >= 0) {
+                servers[existingIndex] = server
+            } else {
+                servers.add(server)
+            }
+            liveWrappers[instance] = server
+            desktopInstanceWrappers.put(instance)
+        }
+
+        server.process.onExit().thenRun {
+            discard(instance)
         }
     }
 
-    fun borrow(): DesktopInstanceWrapper {
-        return desktopInstanceWrappers.take()
+    /**
+     * Discards a broken desktop instance once, kills its LibreOffice process, interrupts any
+     * thread still blocked in a UNO call on it, and schedules a single replacement.
+     */
+    fun discard(instance: DesktopInstanceWrapper) {
+        val server = synchronized(lock) {
+            val removed = liveWrappers.remove(instance) ?: return
+            desktopInstanceWrappers.remove(instance)
+            activeThreads.remove(instance)?.takeIf { it !== Thread.currentThread() }?.interrupt()
+            removed
+        }
+
+        logger.warn("Discarding ${server.logPrefix} and scheduling replacement.")
+
+        if (!closed) {
+            try {
+                replenisher.execute {
+                    runCatching { server.destroy() }
+                    replenish(instance.serverId)
+                }
+            } catch (_: RejectedExecutionException) {
+                runCatching { server.destroy() }
+            }
+        } else {
+            runCatching { server.destroy() }
+        }
     }
 
+    fun isLive(instance: DesktopInstanceWrapper): Boolean = synchronized(lock) {
+        liveWrappers[instance]?.process?.isAlive == true
+    }
+
+    fun borrow(): DesktopInstanceWrapper {
+        while (true) {
+            val instance = desktopInstanceWrappers.take()
+            synchronized(lock) {
+                val server = liveWrappers[instance]
+                if (server != null && server.process.isAlive) {
+                    activeThreads[instance] = Thread.currentThread()
+                    return instance
+                }
+            }
+            discard(instance)
+        }
+    }
 
     fun giveBack(instance: DesktopInstanceWrapper) {
-        desktopInstanceWrappers.put(instance)
+        val returned = synchronized(lock) {
+            activeThreads.remove(instance)
+            (instance in liveWrappers).also {
+                if (it) {
+                    desktopInstanceWrappers.put(instance)
+                }
+            }
+        }
+        if (!returned) {
+            Thread.interrupted()
+        }
+    }
+
+    @PreDestroy
+    fun shutdown() {
+        closed = true
+        replenisher.shutdownNow()
+        val toDestroy = synchronized(lock) {
+            val current = servers.toList()
+            servers.clear()
+            liveWrappers.clear()
+            desktopInstanceWrappers.clear()
+            activeThreads.clear()
+            current
+        }
+        toDestroy.forEach { runCatching { it.destroy() } }
+    }
+
+    private fun replenish(serverId: Int) {
+        var delayMs = 500L
+        while (!closed) {
+            try {
+                construct(serverId)
+                return
+            } catch (e: Exception) {
+                logger.error("[LibreOffice/$serverId] Failed to start replacement instance, retrying in ${delayMs}ms.", e)
+                try {
+                    Thread.sleep(delayMs)
+                } catch (_: InterruptedException) {
+                    Thread.currentThread().interrupt()
+                    return
+                }
+                delayMs = (delayMs * 2).coerceAtMost(10_000L)
+            }
+        }
     }
 
     private fun getUnoRemoteContext(host: String, port: String): XComponentContext {

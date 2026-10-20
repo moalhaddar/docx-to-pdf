@@ -9,6 +9,7 @@ import java.io.IOException
 import java.net.InetSocketAddress
 import java.net.Socket
 import java.nio.file.Path
+import java.util.concurrent.TimeUnit
 import kotlin.io.path.createTempDirectory
 
 
@@ -39,6 +40,7 @@ class LibreOfficeServer(val host: String, val port: Int, val id: Int)  {
         )
             .redirectOutput(ProcessBuilder.Redirect.PIPE)
             .start()
+        this.process = process
         logger.info("$logPrefix PID: ${process.pid()}")
 
         GlobalScope.launch {
@@ -55,8 +57,6 @@ class LibreOfficeServer(val host: String, val port: Int, val id: Int)  {
 
         process.onExit().thenAccept { parent ->
             logger.info("$logPrefix Process exited with status: ${parent.exitValue()}")
-            // There is a bug here where parent launches soffice.bin but it's not killed
-            // even if we iterate through all the child processes.
             logger.debug("$logPrefix Deleting profile: $libreOfficeUserProfilePath")
             FileSystemUtils.deleteRecursively(libreOfficeUserProfilePath)
         }
@@ -65,6 +65,10 @@ class LibreOfficeServer(val host: String, val port: Int, val id: Int)  {
         val timeout = 10 * 1000
 
         while (true) {
+            if (!process.isAlive) {
+                destroy()
+                throw IllegalStateException("$logPrefix Process exited prematurely during startup.")
+            }
             try {
                 Socket().use { socket ->
                     socket.connect(InetSocketAddress(host, port), 10 * 1000)
@@ -75,17 +79,35 @@ class LibreOfficeServer(val host: String, val port: Int, val id: Int)  {
                 // Check if the timeout has been exceeded
                 if (System.currentTimeMillis() - startTime > timeout) {
                     logger.error("$logPrefix Connection attempt timed out after $timeout milliseconds.")
-                    break
+                    destroy()
+                    throw IllegalStateException("$logPrefix Connection attempt timed out after $timeout milliseconds.", e)
                 }
                 // Sleep for a short interval before retrying
                 try {
                     Thread.sleep(500)
                 } catch (ie: InterruptedException) {
                     Thread.currentThread().interrupt()
+                    destroy()
+                    throw IllegalStateException("$logPrefix Interrupted while waiting for server startup.", ie)
                 }
             }
         }
+    }
 
-        this.process = process
+    /**
+     * Kills the launcher process, its children, and any soffice.bin process still tied to this
+     * instance's profile directory so the port is freed before a replacement instance starts.
+     */
+    fun destroy() {
+        val profileName = libreOfficeUserProfilePath.fileName.toString()
+        runCatching { process.descendants().forEach { it.destroyForcibly() } }
+        process.destroyForcibly()
+        runCatching { process.waitFor(2, TimeUnit.SECONDS) }
+        ProcessHandle.allProcesses().forEach { handle ->
+            if (handle.info().commandLine().orElse(null)?.contains(profileName) == true) {
+                runCatching { handle.destroyForcibly() }
+                runCatching { handle.onExit().get(2, TimeUnit.SECONDS) }
+            }
+        }
     }
 }
