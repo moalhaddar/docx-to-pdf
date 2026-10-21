@@ -5,6 +5,9 @@ on:
   push:
     paths:
       - src/**
+      - Cargo.toml
+      - Cargo.lock
+      - Dockerfile
     branches: [ "master" ]
 
 jobs:
@@ -26,8 +29,7 @@ jobs:
       run: |
         docker build . \
             --tag moalhaddar/docx-to-pdf:latest \
-            --tag moalhaddar/docx-to-pdf:2.1.0-${{github.run_number}}
+            --tag moalhaddar/docx-to-pdf:3.0.0-${{github.run_number}}
         
         docker push moalhaddar/docx-to-pdf:latest
-        docker push moalhaddar/docx-to-pdf:2.1.0-${{github.run_number}}
-      
+        docker push moalhaddar/docx-to-pdf:3.0.0-${{github.run_number}}
