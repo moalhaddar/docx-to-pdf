@@ -1,0 +1,33 @@
+[package]
+name = "docx-to-pdf"
+version = "3.0.0"
+edition = "2024"
+rust-version = "1.99.1"
+authors = [
+    "Mohammad Alhaddar <moalhaddar@gmail.com>",
+    "Abdulrazzaq Alhendi <dev@aalhendi.com>",
+]
+description = "High-performance DOCX to PDF microservice powered by LibreOfficeKit"
+repository = "https://github.com/moalhaddar/docx-to-pdf"
+license = "MIT"
+
+[dependencies]
+axum = { version = "0.8", default-features = false, features = ["http1", "multipart", "tokio"] }
+libc = "0.2"
+tempfile = "3"
+tokio = { version = "1", default-features = false, features = ["fs", "io-util", "macros", "net", "process", "rt-multi-thread", "signal", "sync", "time"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", default-features = false, features = ["env-filter", "fmt", "std"] }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+landlock = "0.4.7"
+
+[lints.rust]
+unsafe_op_in_unsafe_fn = "deny"
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+codegen-units = 1
+panic = "abort"
+strip = "symbols"

@@ -1,9 +1,9 @@
 # Docx To PDF
 
 > [!IMPORTANT]  
-> As of 31st May, 2024, the service has been rewritten using kotlin and spring boot.
+> As of v3.0.0, the service has been rewritten in Rust on top of `LibreOfficeKit` (`libsofficeapp.so`), replacing the JVM/Spring Boot + UNO socket bridge.
 >
-> If you wish to use or look at the old source code, you can do so by checking out the `nodejs` branch.
+> If you wish to use or look at the old Node.js source code, you can do so by checking out the `nodejs` branch.
 
 ## Overview
 This tool transforms Microsoft Word Documents (DOCX) into PDF format.
@@ -40,17 +40,16 @@ It offers built-in APIs and a server mode, enabling users to programmatically in
 While not perfect, it is still the best available solution for free for rendering docx formats.
 
 
-# Proposd Solution
-This service is built in Java, using spring boot, exposing a simple API that takes a docx file as an input
-and responds back with a `application/pdf` file.
+# Proposed Solution
+This service is built in Rust (`axum` + `tokio`), exposing a simple HTTP API that takes a `.docx` file as input
+and responds with an `application/pdf` file.
 
-It achieves this by launching a LibreOffice server in the background during initialization, then starts
-communicating with the server through the UNO APIs provided by OpenOffice (OO) to:
-1. Launch an instance.
-2. Load the document.
-3. Save the document as PDF.
+During initialization, the supervisor spawns a pool of pre-warmed worker processes that load LibreOffice's C library (`libsofficeapp.so` via `libreofficekit_hook_2`) directly in-process:
+1. Load the document (`documentLoad`).
+2. Export the document as PDF (`saveAs`).
+3. Return the PDF bytes to the caller.
 
-And then streaming the response back to the user.
+If a worker crashes, the supervisor terminates it, spawns a fresh pre-warmed worker in the background, and retries the conversion. A conversion deadline returns HTTP 504 and replaces the worker for subsequent requests.
 
 # Installation Guide
 ## Using docker
@@ -63,9 +62,11 @@ Then you can run the service:
 ```shell
 docker run \
  --rm --name docx-to-pdf \
+ --read-only --cap-drop=ALL --security-opt=no-new-privileges \
+ --tmpfs /tmp:rw,nosuid,nodev,noexec,size=512m,mode=1777 \
  -p 8080:8080  \
  -e "pool.size=1" \
- -v ./fonts:/usr/share/fonts/custom \
+ -v ./fonts:/usr/share/fonts/custom:ro \
   moalhaddar/docx-to-pdf:latest
 ```
 
@@ -76,41 +77,26 @@ Some details:
 ## Locally
 
 To run this service locally, you will need the following:
-- Java 17
-- Maven
-  - [Download](https://maven.apache.org/download.cgi) the zip archive.
-  - Include the maven binaries within your $PATH environment variable
-    ```shell
-      $ export PATH=$PATH:/path/to/folder/apache-maven-3.9.4/bin
-    ```
-  - ```shell
-      $ mvn -v
-      Apache Maven 3.9.4 (dfbb324ad4a7c8fb0bf182e6d91b0ae20e3d2dd9)
-    ```
-    
-- LibreOffice, make sure it's available in your system through the $PATH variable.
+- Rust toolchain (`cargo` / `rustc`)
+  - Install via [rustup.rs](https://rustup.rs/)
+- LibreOffice installed on the system (`libsofficeapp.so` under `/usr/lib/libreoffice/program` or `/usr/lib64/libreoffice/program`)
   - ```shell
       $ libreoffice --version
         LibreOffice 7.5.6.2 50(Build:2)
-    ```     
-    
-- Clone this repository and then from the home directory run the service 
+    ```
+- Landlock filesystem protection is best-effort: Linux hosts with ABI 3 support can enforce the full requested policy; older or restricted hosts use the available protection and log a warning when it is reduced or unavailable. Missing Landlock support does not prevent startup.
+- Clone this repository and run the service:
   - ```shell
-      $ mvn spring-boot:run
+      $ cargo run --release -- --pool.size=1 --server.port=8080
     ```
-- Expect the service to be running on port 8080 by default.
+- Expect the service to be running on port 8080 by default:
   ```
-    2023-10-06T22:36:06.922+03:00  INFO 1513874 --- [           main] d.a.d.DocxToPdfKotlinApplicationKt       : No active profile set, falling back to 1 default profile: "default"
-    2023-10-06T22:36:07.414+03:00  INFO 1513874 --- [           main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat initialized with port(s): 8080 (http)
-    2023-10-06T22:36:07.419+03:00  INFO 1513874 --- [           main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
-    2023-10-06T22:36:07.419+03:00  INFO 1513874 --- [           main] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/10.1.13]
-    2023-10-06T22:36:07.463+03:00  INFO 1513874 --- [           main] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring embedded WebApplicationContext
-    2023-10-06T22:36:07.464+03:00  INFO 1513874 --- [           main] w.s.c.ServletWebServerApplicationContext : Root WebApplicationContext: initialization completed in 513 ms
-    2023-10-06T22:36:07.554+03:00  INFO 1513874 --- [atcher-worker-1] d.a.docxtopdf.server.LibreOfficeServer   : [LibreOffice/0] Starting server instance..
-    2023-10-06T22:36:07.788+03:00  INFO 1513874 --- [           main] o.s.b.a.e.web.EndpointLinksResolver      : Exposing 1 endpoint(s) beneath base path '/actuator'
-    2023-10-06T22:36:07.813+03:00  INFO 1513874 --- [           main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat started on port(s): 8080 (http) with context path ''
-    2023-10-06T22:36:07.821+03:00  INFO 1513874 --- [           main] d.a.d.DocxToPdfKotlinApplicationKt       : Started DocxToPdfKotlinApplicationKt in 1.071 seconds (process running for 1.22)
-    ```
+    Starting docx-to-pdf v3.0.0 (pool.size=1, port=8080)
+    [LibreOffice/0] Starting server instance..
+    [LibreOffice/0] PID: 2285545
+    [LibreOffice/0] Ready and pre-warmed in 1327 ms
+    Started docx-to-pdf on 0.0.0.0:8080 in 1327 ms
+  ```
 
 # Usage
 Once the service is up and running, you can try hitting the service at the `/pdf` endpoint.
@@ -170,24 +156,41 @@ Then you will need to restart the service.
 If the font is not included within the system/docker image, then the result PDFs will not look the same as the original
 docx file.
 
+The image includes Carlito and Caladea as metric-compatible fallbacks for Calibri and Cambria, alongside DejaVu, Liberation, Noto and the custom fonts. LibreOffice versions and other missing fonts can still affect layout; verify representative documents before upgrading.
+
+## Compatibility and request limits
+
+Both conversion endpoints and the `document` multipart field are retained. The default file and total multipart request limits are each 10 MiB; the request bound includes multipart overhead. Legacy `SPRING_SERVLET_MULTIPART_MAX_FILE_SIZE` and `SPRING_SERVLET_MULTIPART_MAX_REQUEST_SIZE` settings are supported independently, as are their dotted environment and `--spring.servlet.multipart.max-file-size=...` / `--spring.servlet.multipart.max-request-size=...` CLI forms. Sizes accept bytes or binary `B`, `KB`, `MB`, `GB`, `TB` units; `-1` disables the corresponding bound. The existing Rust `MAX_FILE_SIZE_MB` setting takes precedence over both legacy limits and sets both bounds to that many MiB. Invalid sizes fail startup instead of silently reverting to a larger default. All uploaded file parts and the complete multipart request are checked, including parts after `document`.
+
+`SERVER_ADDRESS` (or `server.address` / `--server.address=...`) binds only the configured address; an explicit bind failure never falls back to a wildcard interface. When omitted, the default remains all interfaces. `SERVER_SERVLET_CONTEXT_PATH` (or `server.servlet.context-path` / `--server.servlet.context-path=...`) prefixes both conversion endpoints and every health endpoint. For `/convert`, use `/convert/pdf` and `/convert/actuator/health`; unprefixed routes are not exposed. Empty or `/` selects the root context, and trailing slashes are normalized. CLI values override the corresponding environment aliases.
+
+The Rust service intentionally rejects empty documents with 400 and invalid/non-DOCX documents with 422 instead of attempting text conversion or returning 500. Oversized bodies return 413, a full request queue or exhausted worker wait returns 503, stalled uploads return 408, and conversion deadlines return 504. Errors use a JSON `status`/`error` body rather than Spring's error envelope. CORS preflights return 204 and allow requested headers, including Authorization. Clients should accept a successful 2xx preflight.
+
+`/actuator/health/liveness` checks the supervisor, while `/actuator/health/readiness` and `/actuator/health` check worker availability. `/health` is an additional alias. These interfaces preserve the normal upload workflow; error responses are not byte-for-byte compatible with Spring Boot.
+
+## Processing untrusted documents
+
+Before loading LibreOffice or creating its threads, each worker attempts a [Landlock filesystem policy](https://docs.kernel.org/userspace-api/landlock.html) with `CompatLevel::BestEffort` and `no_new_privs`. With the full policy enforced, it can read installed engine resources, fonts and selected OS configuration; it can write only its own temporary profile/job tree and `/dev/null`. Jobs run inside that worker's private tree. Unrelated mounts, other workers' job trees, home directories and secrets under `/run` are then outside the policy. On older kernels only supported restrictions apply; when Landlock is unavailable or policy setup fails, the worker logs a warning and continues conversion without Landlock filesystem isolation. Do not assume filesystem isolation on every host. The supervisor does not pass its application environment to workers; only locale, timezone and `LO_PROGRAM_DIR` settings are inherited.
+
+Do not mount secrets into the conversion container. Reused workers can access their own profile, and these restrictions are not a complete sandbox for native-code exploits. The image disables macro execution and automatic link updates and removes LibreOffice's HTTP/FTP content providers. Deploy with restricted outbound networking, CPU/memory/PID limits, a read-only root filesystem and a bounded `/tmp`, as appropriate for the workload; keep the image and LibreOffice patched. Embedded images are supported; external file-linked images outside the allowed resources are blocked only when the corresponding filesystem restrictions are active.
+
 # Performance
 This tool was designed with performance in mind. 
 
 The default settings runs the service with one converter worker only. If you have enough system resources available and
-need to increase the worker pool size, you can do so by providing the environment variable `pool.size` to the service.
+need to increase the worker pool size, you can do so by providing the environment variable `pool.size` (or `POOL_SIZE` / `--pool.size=<N>`) to the service.
 
-Or you can do so by uncommenting the `pool.size` line in the [properties](./src/main/resources/application.properties) file.
+For manual browser load tests, see [index.html](./scripts/index.html) and [stress.js](./scripts/stress.js).
 
-The test is done through a web browser and javascript, checkout [index.html](./scripts/index.html) & [stress.js](./scripts/stress.js) respectively.
+A local Linux/amd64 Docker comparison used one worker, 2 CPUs, 2 GiB memory and a 512 MiB `/tmp` tmpfs per service. The table gives median total times for 50 concurrent requests over three repetitions, after five warmup conversions per fixture. All 900 comparison requests returned 200. The baseline was v2.1.0 (`a692cfc`); the Rust image included the restored font fallbacks and filesystem restrictions described above.
 
-I've stress tested this service with concurrent requests with a very simple 1-page docx file (example 1), here are the results:
+| Document | Kotlin baseline | Rust | Speedup |
+|----------|-----------------|------|---------|
+| Original example 1 | 1.701s | 0.787s | 2.16x |
+| Synthetic table/image | 3.132s | 2.450s | 1.28x |
+| Synthetic long document (37 pages in both) | 9.026s | 6.159s | 1.47x |
 
-| Number Of Concurrent Requests | Number Of Workers | Time to serve all requests |
-|-------------------------------|-------------------|----------------------------|
-| 50                            | 1                 | 5.594s                     |
-| 50                            | 4                 | 1.880s                     |
-| 50                            | 8                 | 1.277s                     |
-| 50                            | 16                | 1.081s                     |
+These are workload- and host-specific observations, not a universal speedup or a comparison against other converters.
 
 Keep in mind that the input file complexity matters a lot when it comes to the conversion performance.
 
